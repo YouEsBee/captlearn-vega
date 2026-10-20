@@ -1,0 +1,107 @@
+schema-version = 1
+
+[package]
+title = "captlearn"
+version = "0.1.0"
+id = "com.youesbee.captlearn"
+
+[os.version]
+min = "1.2"
+target = "1.2"
+
+[needs]
+[[needs.module]]
+id = "/com.amazon.vega.os@IVega_1_2"
+
+# Media playback and network access. Copied from the official Vega video sample.
+[[needs.privilege]]
+id = "com.amazon.media.secureplayback"
+
+[[needs.privilege]]
+id = "com.amazon.network.privilege.net-info"
+
+[[needs.module]]
+id = "/com.amazon.kepler.kepler_media_controls_1@IKeplerMediaControls_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.keplermediadescriptor_1@IKeplermediadescriptor_1"
+
+[[needs.module]]
+id = "/com.amazon.kepler.keplerscript_4@IKeplerScript_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.w3cmedia_2@IW3cmedia_3"
+
+
+
+
+
+[components]
+[[components.interactive]]
+id = "com.youesbee.captlearn.main"
+runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
+launch-type = "singleton"
+categories = [
+    "com.amazon.category.main",
+    "com.amazon.category.kepler.media",
+]
+
+# Media playback controls: which component handles remote and media-control events.
+[[extras]]
+key = "interface.provider"
+component-id = "com.youesbee.captlearn.main"
+
+[extras.value.application]
+[[extras.value.application.interface]]
+interface_name = "com.amazon.kepler.media.IMediaPlaybackServer"
+command_options = [
+    "StartOver",
+    "Previous",
+    "Next",
+    "SkipForward",
+    "SkipBackward",
+]
+attribute_options = ["AudioAdvanceMuted"]
+features = ["AdvancedSeek", "VariableSpeed", "AudioTracks", "TextTracks"]
+
+# Media playback services. Without these, the player can't load or decode video.
+[wants]
+[[wants.service]]
+id = "com.amazon.media.server"
+
+# Required for GIPC (audio/video playback), as in the official sample.
+[[wants.service]]
+id = "com.amazon.gipc.uuid.*"
+
+# Accessibility privilege the official sample declares for playback.
+[[wants.privilege]]
+id = "com.amazon.devconf.privilege.accessibility"
+
+[[wants.service]]
+id = "com.amazon.mediametrics.service"
+
+[[wants.service]]
+id = "com.amazon.media.playersession.service"
+
+[[wants.service]]
+id = "com.amazon.mediabuffer.service"
+
+[[wants.service]]
+id = "com.amazon.mediatransform.service"
+
+[[wants.service]]
+id = "com.amazon.network.service"
+
+[[wants.service]]
+id = "com.amazon.audio.stream"
+
+[[wants.service]]
+id = "com.amazon.audio.control"
+
+[[wants.service]]
+id = "com.amazon.audio.system"
+
+[offers]
+# Required for GIPC SR, as in the official sample.
+[[offers.service]]
+id = "com.amazon.gipc.uuid.*"
