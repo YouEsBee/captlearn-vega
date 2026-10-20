@@ -7,8 +7,10 @@ The user will first complete a quiz and thereafter watch a video with the Englis
 
 ## Set up
 - Clone this repository and open the project in VS Code.
+- Install all node packages with ```npm i```
 - Install Vega Studio plugin.
-- Change directory into backend and run the backend via command line with
+- Change directory into backend and install all node packages with ```npm i```
+- Run the backend via command line with
 ```
 GEMINI_API_KEY=YOUR_API_KEY GEMINI_MODEL=YOUR_GEMINI_MODEL node server.js
 ```
