@@ -1,9 +1,14 @@
 # CaptLearn
 A VegaOS TV app that teaches you another language while you watch.
 
-## Details
+## Description
 This app is a proof of concept, currently by streaming a local video.
 The user will first complete a quiz and thereafter watch a video with the English translations removed.
+
+## Tech Stack
+- Gemini for video subtitle transcription and translation
+- React Native with Typescript for app development
+- Cloudfared to test local video
 
 ## Set up
 - Clone this repository and open the project in VS Code.
