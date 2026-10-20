@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {ReactNode, useMemo, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusButton} from '../components/FocusButton';
 import {MasteryMap, markLearnt, recordAnswer} from '../learning/mastery';
@@ -68,28 +68,34 @@ export const QuizScreen = ({
   const [result, setResult] = useState<Result | null>(null);
   const [current, setCurrent] = useState<MasteryMap>(mastery);
 
+  // Back sits above the content on every quiz screen, as text with no border.
+  const Frame = ({children}: {children: ReactNode}) => (
+    <View style={styles.container}>
+      <FocusButton label="‹ Exit Quiz" onPress={onExit} variant="text" />
+      <View style={styles.body}>{children}</View>
+    </View>
+  );
+
   if (!cues) {
     return (
-      <View style={styles.container}>
+      <Frame>
         <Text style={styles.text}>Loading the lesson...</Text>
-        <FocusButton label="Back" onPress={onExit} hasTVPreferredFocus compact />
-      </View>
+      </Frame>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <View style={styles.container}>
+      <Frame>
         <Text style={styles.text}>No lexicon words appear in this video.</Text>
         <FocusButton label="Watch video" onPress={onDone} hasTVPreferredFocus compact />
-        <FocusButton label="Back" onPress={onExit} compact />
-      </View>
+      </Frame>
     );
   }
 
   if (asked >= questions.length) {
     return (
-      <View style={styles.container}>
+      <Frame>
         <View style={styles.question}>
           <Text style={styles.word}>Quiz done</Text>
           <Text style={styles.text}>
@@ -99,11 +105,8 @@ export const QuizScreen = ({
             Correct words will be blanked in the video's English line.
           </Text>
         </View>
-        <View style={styles.choices}>
-          <FocusButton label="Watch video" onPress={onDone} hasTVPreferredFocus compact />
-          <FocusButton label="Back" onPress={onExit} compact />
-        </View>
-      </View>
+        <FocusButton label="Watch video" onPress={onDone} hasTVPreferredFocus compact />
+      </Frame>
     );
   }
 
@@ -123,7 +126,7 @@ export const QuizScreen = ({
     setResult({
       isRight,
       headline: isRight ? 'Correct!' : 'Not quite.',
-      answer: `The answer is ${question.entry.gloss}.`,
+      answer: `The answer is "${question.entry.gloss}".`,
     });
   };
 
@@ -134,7 +137,7 @@ export const QuizScreen = ({
   };
 
   return (
-    <View style={styles.container}>
+    <Frame>
       <View style={styles.question}>
         <Text style={styles.small}>
           Question {asked + 1} of {questions.length}
@@ -147,17 +150,15 @@ export const QuizScreen = ({
       </View>
       <View style={styles.choices}>
         {result === null ? (
-          <>
-            {question.choices.map((choice, i) => (
-              <FocusButton
-                key={`${question.entry.id}-${asked}-${i}`}
-                label={choice}
-                onPress={() => answer(choice)}
-                hasTVPreferredFocus={i === 0}
-                compact
-              />
-            ))}
-          </>
+          question.choices.map((choice, i) => (
+            <FocusButton
+              key={`${question.entry.id}-${asked}-${i}`}
+              label={choice}
+              onPress={() => answer(choice)}
+              hasTVPreferredFocus={i === 0}
+              compact
+            />
+          ))
         ) : (
           <>
             <Text style={result.isRight ? styles.right : styles.wrong}>
@@ -172,9 +173,8 @@ export const QuizScreen = ({
             />
           </>
         )}
-        <FocusButton label="Back" onPress={onExit} compact />
       </View>
-    </View>
+    </Frame>
   );
 };
 
@@ -182,10 +182,13 @@ export const QuizScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 64,
     paddingVertical: 48,
+  },
+  body: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 48,
   },
   question: {flex: 1, justifyContent: 'center'},

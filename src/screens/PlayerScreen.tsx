@@ -232,14 +232,15 @@ export const PlayerScreen = ({
         />
       ) : null}
 
-      <View style={styles.debug} pointerEvents="none">
+      {/* To debug for video playing errors */}
+      {/* <View style={styles.debug} pointerEvents="none">
         {status.map((line, i) => (
           <Text key={i} style={styles.debugText}>
             {line}
           </Text>
         ))}
         <Text style={styles.debugText}>time: {time.toFixed(1)}s</Text>
-      </View>
+      </View> */}
 
       <View style={styles.controls}>
         <FocusButton
