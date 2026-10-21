@@ -32,6 +32,10 @@ id = "/com.amazon.kepler.keplerscript_4@IKeplerScript_0"
 [[needs.module]]
 id = "/com.amazon.kepler.w3cmedia_2@IW3cmedia_3"
 
+[[needs.module]]
+id = "/com.amazon.kepler.async_storage__async_storage_2@IAsyncStorage__AsyncStorage_1"
+
+
 
 
 
@@ -68,6 +72,10 @@ features = ["AdvancedSeek", "VariableSpeed", "AudioTracks", "TextTracks"]
 [wants]
 [[wants.service]]
 id = "com.amazon.media.server"
+
+# for virtual keyboard
+[[wants.service]]
+id = "com.amazon.inputmethod.service"
 
 # Required for GIPC (audio/video playback), as in the official sample.
 [[wants.service]]

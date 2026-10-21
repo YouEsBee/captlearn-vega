@@ -1,4 +1,4 @@
-export type Lang = 'en' | 'zh';
+export type Lang = 'en' | 'zh' | 'ja' | 'ko' | 'es' | 'vi';
 
 export interface Settings {
   nativeLang: Lang; // language the learner already knows (glosses use this)
