@@ -14,8 +14,10 @@ const cueSchema = {
   items: {
     type: Type.OBJECT,
     properties: {
-      start: {type: Type.NUMBER, description: 'Start time in seconds from the beginning'},
-      end: {type: Type.NUMBER, description: 'End time in seconds from the beginning'},
+      // Gemini places M:SS.s clock times on audio far better than raw second counts,
+      // which drift long.
+      start: {type: Type.STRING, description: 'Start time as M:SS.s from the beginning'},
+      end: {type: Type.STRING, description: 'End time as M:SS.s from the beginning'},
       text: {type: Type.STRING, description: 'Caption text in the spoken language'},
       native: {type: Type.STRING, description: 'Natural translation into the learner language'},
     },
@@ -41,14 +43,15 @@ async function uploadAudio(path, mimeType) {
  * [{start, end, text, native}]
  * sourceLang / nativeLang are human names, e.g. 'Mandarin Chinese' and 'English'.
  */
-async function transcribeAndTranslate(audioPath, mimeType, sourceLang, nativeLang) {
+async function transcribeAndTranslate(audioPath, mimeType, sourceLang, nativeLang, durationSeconds) {
   const file = await uploadAudio(audioPath, mimeType);
 
   const prompt = [
     `Transcribe the speech in this audio. The spoken language is ${sourceLang}.`,
+    `The audio is ${clockTime(durationSeconds)} long, so no time is later than that.`,
     `Split it into caption lines of at most ${MAX_LINE_SECONDS} seconds each.`,
     'For each line give:',
-    '- start and end in seconds from the beginning of the audio',
+    '- start and end as M:SS.s clock times from the beginning of the audio, e.g. 1:05.3',
     `- text: the exact spoken words in ${sourceLang}`,
     `- native: a natural ${nativeLang} translation of that line`,
     'Only transcribe speech that is actually heard. Do not invent words for silence or music.',
@@ -69,7 +72,27 @@ async function transcribeAndTranslate(audioPath, mimeType, sourceLang, nativeLan
     },
   });
 
-  return validateCues(JSON.parse(response.text));
+  const raw = JSON.parse(response.text).map(c => ({
+    ...c,
+    start: parseClock(c.start),
+    end: Math.min(parseClock(c.end), durationSeconds),
+  }));
+  return validateCues(raw);
+}
+
+/** 75.4 → "1:15.4" */
+function clockTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  return `${m}:${(seconds - m * 60).toFixed(1).padStart(4, '0')}`;
+}
+
+/** "1:15.4" (or "0:01:15.4", or "75.4") → 75.4; NaN when unreadable. */
+function parseClock(value) {
+  const parts = String(value).trim().split(':');
+  if (parts.length > 3 || parts.some(p => !/^\d+(\.\d+)?$/.test(p))) {
+    return NaN;
+  }
+  return parts.reduce((total, p) => total * 60 + Number(p), 0);
 }
 
 /**
@@ -102,4 +125,4 @@ function validateCues(raw) {
   return cues.filter(c => c.end > c.start);
 }
 
-module.exports = {transcribeAndTranslate, validateCues};
+module.exports = {transcribeAndTranslate, validateCues, parseClock};

@@ -1,5 +1,5 @@
 [
-  {"id": "voa-1", "title": "Saying hello to new neighbours", "lengthSeconds": 95, "level": 1, "credit": "VOA"},
-  {"id": "voa-2", "title": "A weekend at the night market", "lengthSeconds": 130, "level": 1, "credit": "VOA"},
-  {"id": "voa-3", "title": "Looking for a flat in the city", "lengthSeconds": 165, "level": 2, "credit": "VOA"}
+  {"id": "dumpling-shop", "title": "A Harvard grad's dumpling shop", "lengthSeconds": 200, "level": 2, "credit": "VOA"},
+  {"id": "night-market", "title": "A Taiwanese night market in Washington", "lengthSeconds": 193, "level": 2, "credit": "VOA"},
+  {"id": "chinatown-restaurant", "title": "A family restaurant in Chinatown", "lengthSeconds": 209, "level": 3, "credit": "VOA"}
 ]

@@ -30,6 +30,13 @@ function clock(seconds) {
   return `${m}:${s}`;
 }
 
+async function videoSeconds(videoPath) {
+  const {stdout} = await execFileAsync('ffprobe', [
+    '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoPath,
+  ]);
+  return Number(stdout.trim());
+}
+
 async function caption(id, dictionary) {
   const files = videoFiles(id);
   if (!fs.existsSync(files.video)) {
@@ -38,7 +45,8 @@ async function caption(id, dictionary) {
   const audioPath = path.join(os.tmpdir(), `captlearn-${id}.mp3`);
   try {
     await extractAudio(files.video, audioPath);
-    const cues = await transcribeAndTranslate(audioPath, 'audio/mp3', 'Mandarin Chinese', 'English');
+    const seconds = await videoSeconds(files.video);
+    const cues = await transcribeAndTranslate(audioPath, 'audio/mp3', 'Mandarin Chinese', 'English', seconds);
     const entries = saveCaptions(files, cues, dictionary);
     for (const c of cues) {
       console.log(`${clock(c.start)} - ${clock(c.end)}\t${c.text}\t${c.native}`);
