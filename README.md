@@ -15,6 +15,7 @@ The user will first complete a quiz and thereafter watch a video with the Englis
 - Install all node packages with ```npm i```
 - Install Vega Studio plugin.
 - Change directory into backend and install all node packages with ```npm i```
+- Put each catalogue video from `src/data/catalogue.ts` in `backend/media` as `<id>.mp4`, with its thumbnail as `<id>.jpg`.
 - Run the backend via command line with
 ```
 GEMINI_API_KEY=YOUR_API_KEY GEMINI_MODEL=YOUR_GEMINI_MODEL node server.js

@@ -9,24 +9,29 @@ import {OnboardingScreen} from './screens/OnboardingScreen';
 import {SettingsScreen} from './screens/SettingsScreen';
 import {ManageAccountsScreen} from './screens/ManageAccountsScreen';
 import {DeleteAccountScreen} from './screens/DeleteAccountScreen';
+import {CreditsScreen} from './screens/CreditsScreen';
 import {loadCaptions} from './captions/captionSource';
+import {newWordCount, nextVideo} from './catalogue/catalogue';
 import {MasteryMap} from './learning/mastery';
+import {indexLexicon, wordIdsInCues} from './learning/substitute';
 import {QuizAnswer} from './learning/summary';
 import {Cue, Lang, Settings} from './learning/types';
 import {sampleLexicon} from './data/sampleLexicon';
 import {LANGUAGES, languageLabel} from './data/languages';
-import {DEMO_VIDEO_ID} from './config';
+import {CATALOGUE} from './data/catalogue';
 import {defaultSettings} from './storage/progress';
 import {AppState, User, loadState, saveState} from './users/userStore';
 
 // Launch: no users -> onboarding; otherwise -> choose user.
-// Then: home -> quiz (new and due words; skipped when empty) -> video -> summary -> (restart quiz or home).
+// Then: home (pick a video) -> quiz (new and due words; skipped when empty) -> video
+// -> summary -> (quiz for the next unwatched video, or home).
 type Screen =
   | 'loading'
   | 'onboarding'
   | 'choose'
   | 'home'
   | 'settings'
+  | 'credits'
   | 'manageAccounts'
   | 'confirmDelete'
   | 'quiz'
@@ -39,15 +44,20 @@ export const App = () => {
   const [coveredIds, setCoveredIds] = useState<string[]>([]);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  // Captions are loaded up front so the quiz can cover the words in the video.
-  const [cues, setCues] = useState<Cue[] | null>(null);
+  // The video picked on the home screen, or by "Watch next".
+  const [videoId, setVideoId] = useState<string>(CATALOGUE[0].id);
+  // Every catalogue video's captions are loaded up front: the quiz covers the words in the video,
+  // and each home screen card counts its new words.
+  const [cuesByVideo, setCuesByVideo] = useState<Record<string, Cue[]>>({});
 
   useEffect(() => {
     loadState().then(loaded => {
       setState(loaded);
       setScreen(loaded.users.length === 0 ? 'onboarding' : 'choose');
     });
-    loadCaptions(DEMO_VIDEO_ID).then(setCues);
+    CATALOGUE.forEach(v =>
+      loadCaptions(v.id).then(cues => setCuesByVideo(prev => ({...prev, [v.id]: cues}))),
+    );
   }, []);
 
   // Functional updates, so rapid mastery changes never overwrite each other.
@@ -63,7 +73,28 @@ export const App = () => {
   const targetLang: Lang = user?.targetLang ?? 'zh';
   const settings: Settings = {...defaultSettings, targetLang};
   const mastery: MasteryMap = user?.mastery ?? {};
+  const watched = user?.watched ?? [];
+  const nextUnwatched = nextVideo(CATALOGUE, watched);
 
+  // Each video's lexicon words, in the order they are first spoken.
+  const wordsByVideo = useMemo(() => {
+    const index = indexLexicon(lexicon.filter(e => e.lang === targetLang));
+    return Object.fromEntries(
+      Object.entries(cuesByVideo).map(([id, cues]) => [id, wordIdsInCues(cues, index, targetLang)]),
+    );
+  }, [cuesByVideo, lexicon, targetLang]);
+  const newWordCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(wordsByVideo).map(([id, ids]) => [id, newWordCount(ids, mastery)]),
+      ),
+    [wordsByVideo, mastery],
+  );
+
+  const pickVideo = (id: string) => {
+    setVideoId(id);
+    setScreen('quiz');
+  };
   // Removes an account and its progress. Routes to the screen that makes sense next.
   const deleteAccount = (id: string) => {
     const keepCurrent = state.currentUserId !== id;
@@ -84,11 +115,15 @@ export const App = () => {
 
   const deleteTarget = state.users.find(u => u.id === deleteId);
 
-  const updateCurrentUser = (patch: Partial<User>) =>
+  const updateCurrentUser = (change: (user: User) => User) =>
     update(prev => ({
       ...prev,
-      users: prev.users.map(u => (u.id === prev.currentUserId ? {...u, ...patch} : u)),
+      users: prev.users.map(u => (u.id === prev.currentUserId ? change(u) : u)),
     }));
+
+  // Watching to the end, or pressing Finish, marks a video watched.
+  const markWatched = (id: string) =>
+    updateCurrentUser(u => (u.watched.includes(id) ? u : {...u, watched: [...u.watched, id]}));
 
   const selectUser = (id: string) => {
     update(prev => ({...prev, currentUserId: id}));
@@ -97,7 +132,7 @@ export const App = () => {
 
   const createUser = (nickname: string, lang: Lang) => {
     const id = `user-${Date.now()}`;
-    const created: User = {id, nickname, targetLang: lang, mastery: {}};
+    const created: User = {id, nickname, targetLang: lang, mastery: {}, watched: []};
     update(prev => ({...prev, users: [...prev.users, created], currentUserId: id}));
     setScreen('home');
   };
@@ -106,7 +141,7 @@ export const App = () => {
   const cycleLanguage = () => {
     const available = LANGUAGES.filter(l => l.available);
     const at = available.findIndex(l => l.code === targetLang);
-    updateCurrentUser({targetLang: available[(at + 1) % available.length].code});
+    updateCurrentUser(u => ({...u, targetLang: available[(at + 1) % available.length].code}));
   };
 
   return (
@@ -135,15 +170,20 @@ export const App = () => {
           onSwitchUser={() => setScreen('choose')}
           onCreateUser={() => setScreen('onboarding')}
           onOpenSettings={() => setScreen('settings')}
-          onStart={() => setScreen('quiz')}
+          videos={CATALOGUE}
+          watched={watched}
+          newWordCounts={newWordCounts}
+          onPickVideo={pickVideo}
         />
       )}
       {screen === 'settings' && (
         <SettingsScreen
           onManageAccounts={() => setScreen('manageAccounts')}
+          onOpenCredits={() => setScreen('credits')}
           onBack={() => setScreen('home')}
         />
       )}
+      {screen === 'credits' && <CreditsScreen onBack={() => setScreen('settings')} />}
       {screen === 'manageAccounts' && (
         <ManageAccountsScreen
           users={state.users}
@@ -165,10 +205,10 @@ export const App = () => {
       {screen === 'quiz' && (
         <QuizScreen
           lexicon={lexicon}
-          cues={cues}
+          cues={cuesByVideo[videoId] ?? null}
           mastery={mastery}
           targetLang={targetLang}
-          onMasteryChange={next => updateCurrentUser({mastery: next})}
+          onMasteryChange={next => updateCurrentUser(u => ({...u, mastery: next}))}
           onDone={answers => {
             setQuizAnswers(answers);
             setScreen('player');
@@ -178,12 +218,13 @@ export const App = () => {
       )}
       {screen === 'player' && (
         <PlayerScreen
-          videoId={DEMO_VIDEO_ID}
+          videoId={videoId}
           settings={settings}
           lexicon={lexicon}
           mastery={mastery}
           onFinished={ids => {
             setCoveredIds(ids);
+            markWatched(videoId);
             setScreen('summary');
           }}
           onExit={() => setScreen('home')}
@@ -195,6 +236,8 @@ export const App = () => {
           coveredIds={coveredIds}
           lexicon={lexicon}
           mastery={mastery}
+          nextTitle={nextUnwatched?.title}
+          onWatchNext={() => nextUnwatched && pickVideo(nextUnwatched.id)}
           onRestart={() => setScreen('quiz')}
           onHome={() => setScreen('home')}
         />

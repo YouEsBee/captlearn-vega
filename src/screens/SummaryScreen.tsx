@@ -1,5 +1,5 @@
-import React, {useMemo} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useMemo} from 'react';
+import {BackHandler, StyleSheet, Text, View} from 'react-native';
 import {FocusButton} from '../components/FocusButton';
 import {MasteryMap} from '../learning/mastery';
 import {QuizAnswer, lessonSummary} from '../learning/summary';
@@ -12,7 +12,11 @@ interface Props {
   coveredIds: string[];
   lexicon: LexiconEntry[];
   mastery: MasteryMap;
+  /** Title of the next unwatched video; undefined once every video is watched. */
+  nextTitle?: string;
+  onWatchNext: () => void;
   onRestart: () => void;
+  /** Also what the remote's Back does here. */
   onHome: () => void;
 }
 
@@ -22,9 +26,19 @@ export const SummaryScreen = ({
   coveredIds,
   lexicon,
   mastery,
+  nextTitle,
+  onWatchNext,
   onRestart,
   onHome,
 }: Props) => {
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onHome();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onHome]);
+
   const summary = useMemo(
     () => lessonSummary(answers, coveredIds, mastery),
     [answers, coveredIds, mastery],
@@ -62,7 +76,20 @@ export const SummaryScreen = ({
           : `${summary.stillGlossed} words in this video are still glossed.`}
       </Text>
       <View style={styles.buttons}>
-        <FocusButton label="Restart lesson" onPress={onRestart} hasTVPreferredFocus compact />
+        {nextTitle ? (
+          <FocusButton
+            label={`Watch next: ${nextTitle}`}
+            onPress={onWatchNext}
+            hasTVPreferredFocus
+            compact
+          />
+        ) : null}
+        <FocusButton
+          label="Restart lesson"
+          onPress={onRestart}
+          hasTVPreferredFocus={!nextTitle}
+          compact
+        />
         <FocusButton label="Home" onPress={onHome} compact />
       </View>
     </View>
@@ -80,5 +107,5 @@ const styles = StyleSheet.create({
   kept: {color: '#FFD966'},
   lapsed: {color: '#FFB3B3'},
   row: {color: '#FFFFFF', fontSize: 22, marginTop: 2},
-  buttons: {flexDirection: 'row', marginTop: 16},
+  buttons: {flexDirection: 'row', gap: 24, marginTop: 16},
 });

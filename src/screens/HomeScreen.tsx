@@ -1,8 +1,11 @@
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {Avatar} from '../components/Avatar';
 import {FocusButton} from '../components/FocusButton';
 import {Gear} from '../components/Gear';
+import {VideoCard} from '../components/VideoCard';
+import {catalogueRows, nextVideo} from '../catalogue/catalogue';
+import {Video} from '../catalogue/types';
 
 interface Props {
   nickname: string;
@@ -11,7 +14,13 @@ interface Props {
   onSwitchUser: () => void;
   onCreateUser: () => void;
   onOpenSettings: () => void;
-  onStart: () => void;
+  /** The catalogue, in suggested order. */
+  videos: Video[];
+  /** Ids of the videos this learner has watched. */
+  watched: string[];
+  /** New word count per video id; missing while a video's captions load. */
+  newWordCounts: Record<string, number>;
+  onPickVideo: (id: string) => void;
 }
 
 export const HomeScreen = ({
@@ -21,12 +30,16 @@ export const HomeScreen = ({
   onSwitchUser,
   onCreateUser,
   onOpenSettings,
-  onStart,
+  videos,
+  watched,
+  newWordCounts,
+  onPickVideo,
 }: Props) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [gearFocused, setGearFocused] = useState(false);
   const [avatarFocused, setAvatarFocused] = useState(false);
-  const [startFocused, setStartFocused] = useState(false);
+  // Focus starts on the next unwatched video, or the first video once all are watched.
+  const focusId = (nextVideo(videos, watched) ?? videos[0])?.id;
 
   return (
     <View style={styles.container}>
@@ -81,23 +94,27 @@ export const HomeScreen = ({
         </View>
       )}
 
-      <View style={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.title}>CaptLearn</Text>
-        <Text style={styles.subtitle}>Learn a lang? Watch a vid.</Text>
-        <Text style={styles.nickname}>Learning as {nickname}</Text>
-        <Pressable
-          onPress={onStart}
-          onFocus={() => setStartFocused(true)}
-          onBlur={() => setStartFocused(false)}
-          hasTVPreferredFocus={!menuOpen}
-          testID="btn-start"
-          accessibilityRole="button"
-          accessibilityLabel="Start Lesson"
-          style={[styles.start, startFocused && styles.focused]}>
-          <View style={styles.playIcon} />
-          <Text style={styles.startLabel}>Start Lesson</Text>
-        </Pressable>
-      </View>
+        <Text style={styles.nickname}>Learning as {nickname}. Pick a video.</Text>
+        {catalogueRows(videos).map(row => (
+          <View key={row.level} style={styles.row}>
+            <Text style={styles.rowTitle}>HSK {row.level}</Text>
+            <View style={styles.cards}>
+              {row.videos.map(video => (
+                <VideoCard
+                  key={video.id}
+                  video={video}
+                  watched={watched.includes(video.id)}
+                  newWordCount={newWordCounts[video.id]}
+                  hasTVPreferredFocus={!menuOpen && video.id === focusId}
+                  onPress={() => onPickVideo(video.id)}
+                />
+              ))}
+            </View>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 };
@@ -144,40 +161,18 @@ const styles = StyleSheet.create({
     padding: 8,
     zIndex: 2,
   },
-  // Padding pushes the title down from the top row, as in the Figma layout.
+  // Content stays inside the 90% safe area (96px and 54px margins on a 1920x1080 screen),
+  // with room for a focused card to grow.
+  scroll: {flex: 1},
   content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 120,
-    paddingRight: 120,
-    paddingTop: 120,
-    paddingBottom: 48,
+    paddingLeft: 112,
+    paddingRight: 112,
+    paddingTop: 112,
+    paddingBottom: 70,
   },
-  title: {color: '#FFFFFF', fontSize: 104, fontWeight: '600'},
-  subtitle: {color: '#FFFFFF', fontSize: 32, marginTop: 8, marginBottom: 24},
-  nickname: {color: '#AAAAAA', fontSize: 24, marginBottom: 40},
-  start: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#323766',
-    borderRadius: 16,
-    borderWidth: 3,
-    borderColor: 'transparent',
-    paddingVertical: 20,
-    paddingHorizontal: 36,
-  },
-  playIcon: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 24,
-    borderBottomWidth: 24,
-    borderLeftWidth: 36,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: '#FFFFFF',
-    marginRight: 28,
-  },
-  startLabel: {color: '#FFFFFF', fontSize: 34, fontWeight: '500'},
+  title: {color: '#FFFFFF', fontSize: 48, fontWeight: '600'},
+  nickname: {color: '#AAAAAA', fontSize: 24, marginBottom: 8},
+  row: {marginTop: 12},
+  rowTitle: {color: '#FFFFFF', fontSize: 28, fontWeight: '600', marginBottom: 12},
+  cards: {flexDirection: 'row', gap: 40},
 });

@@ -8,6 +8,8 @@ export interface User {
   nickname: string;
   targetLang: Lang;
   mastery: MasteryMap;
+  /** Ids of the catalogue videos this user has watched to the end or finished. */
+  watched: string[];
 }
 
 export interface AppState {
@@ -35,9 +37,11 @@ export function parseState(raw: string | null): AppState {
   }
   const {progressVersion, ...stored} = JSON.parse(raw) as StoredState;
   const state = {...EMPTY, ...stored};
+  // Profiles saved before watched videos were tracked have no watched list.
+  const users = state.users.map(u => ({...u, watched: u.watched ?? []}));
   return progressVersion === PROGRESS_VERSION
-    ? state
-    : {...state, users: state.users.map(u => ({...u, mastery: {}}))};
+    ? {...state, users}
+    : {...state, users: users.map(u => ({...u, mastery: {}}))};
 }
 
 /** Writes state for storage, tagged with the current progress version. */

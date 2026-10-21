@@ -4,15 +4,17 @@ import {FocusButton} from '../components/FocusButton';
 
 interface Props {
   onManageAccounts: () => void;
+  onOpenCredits: () => void;
   onBack: () => void;
 }
 
-export const SettingsScreen = ({onManageAccounts, onBack}: Props) => (
+export const SettingsScreen = ({onManageAccounts, onOpenCredits, onBack}: Props) => (
   <View style={styles.container}>
     <FocusButton label="‹ Back" onPress={onBack} variant="text" />
     <View style={styles.body}>
       <Text style={styles.title}>Settings</Text>
       <FocusButton label="Manage Accounts" onPress={onManageAccounts} hasTVPreferredFocus compact />
+      <FocusButton label="Credits" onPress={onOpenCredits} compact />
     </View>
   </View>
 );

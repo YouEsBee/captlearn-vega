@@ -1,4 +1,4 @@
-import {parseState, serializeState} from '../../src/users/userStore';
+import {User, parseState, serializeState} from '../../src/users/userStore';
 import {recordAnswer} from '../../src/learning/mastery';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -25,15 +25,29 @@ describe('stored app state', () => {
       currentUserId: 'user-1',
     });
     expect(parseState(old)).toEqual({
-      users: [{id: 'user-1', nickname: 'Ana', targetLang: 'zh', mastery: {}}],
+      users: [{id: 'user-1', nickname: 'Ana', targetLang: 'zh', mastery: {}, watched: []}],
       currentUserId: 'user-1',
     });
+  });
+
+  it('gives profiles saved before watched videos were tracked an empty watched list', () => {
+    const saved = serializeState({
+      users: [{id: 'user-1', nickname: 'Ana', targetLang: 'zh', mastery: {}} as User],
+      currentUserId: 'user-1',
+    });
+    expect(parseState(saved).users[0].watched).toEqual([]);
   });
 
   it('keeps progress saved by this version', () => {
     const state = {
       users: [
-        {id: 'user-1', nickname: 'Ana', targetLang: 'zh' as const, mastery: recordAnswer({}, 'zh-ni', true, NOW)},
+        {
+          id: 'user-1',
+          nickname: 'Ana',
+          targetLang: 'zh' as const,
+          mastery: recordAnswer({}, 'zh-ni', true, NOW),
+          watched: ['voa-1'],
+        },
       ],
       currentUserId: 'user-1',
     };

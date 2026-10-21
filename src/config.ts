@@ -3,6 +3,3 @@
 
 // local host since emulator runs on computer
 export const BACKEND_URL = 'https://occurrence-elder-kate-violations.trycloudflare.com';
-
-// The video ID the backend knows, matching backend/media/<id>.mp4.
-export const DEMO_VIDEO_ID = 'test1_compat';

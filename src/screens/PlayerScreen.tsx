@@ -19,7 +19,7 @@ import {
 } from '../learning/substitute';
 import {MasteryMap, isLearnt} from '../learning/mastery';
 import {Cue, LexiconEntry, Settings} from '../learning/types';
-import {BACKEND_URL} from '../config';
+import {videoUrl} from '../data/catalogue';
 
 interface Props {
   videoId: string;
@@ -123,7 +123,7 @@ export const PlayerScreen = ({
       .then(() => player.initialize())
       .then(() => {
         player.autoplay = false;
-        player.src = `${BACKEND_URL}/media/${videoId}.mp4`;
+        player.src = videoUrl(videoId);
         // Same order as the official sample's loadStaticMediaPlayer: pause, then load.
         player.pause();
         player.load();
