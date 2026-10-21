@@ -1,6 +1,6 @@
 import {pinyin} from 'pinyin-pro';
 import {LexiconEntry, Lang, NativeSegment, Segment} from './types';
-import {MasteryMap, getScore} from './mastery';
+import {MasteryMap, isLearnt} from './mastery';
 
 const MAX_PHRASE_LENGTH = 4; // Chinese words are up to ~4 characters here
 const CHINESE = /[一-鿿]/;
@@ -66,19 +66,18 @@ export function tokenize(
 
 /**
  * Decides what each Chinese segment shows: the Chinese and its pinyin always,
- * plus the English gloss while the word is not yet learnt (mastery below the threshold).
+ * plus the English gloss while the word is not yet learnt.
  */
 export function applyGlosses(
   segments: Segment[],
   entriesById: Map<string, LexiconEntry>,
   mastery: MasteryMap,
-  threshold: number,
 ): Segment[] {
   return segments.map(seg => {
     if (!CHINESE.test(seg.text)) {
       return seg;
     }
-    const learnt = !!seg.wordId && getScore(mastery, seg.wordId) >= threshold;
+    const learnt = !!seg.wordId && isLearnt(mastery, seg.wordId);
     const entry = seg.wordId ? entriesById.get(seg.wordId) : undefined;
     return {
       text: seg.text,
@@ -90,21 +89,30 @@ export function applyGlosses(
   });
 }
 
+/** How often each lexicon word is spoken across the caption cues, in order of first appearance. */
+export function wordCountsInCues(
+  cues: {text: string}[],
+  index: Map<string, LexiconEntry>,
+  lang: Lang,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  cues.forEach(cue =>
+    tokenize(cue.text, lang, index).forEach(seg => {
+      if (seg.wordId) {
+        counts.set(seg.wordId, (counts.get(seg.wordId) ?? 0) + 1);
+      }
+    }),
+  );
+  return counts;
+}
+
 /** Lexicon word ids in the order they first appear across the caption cues. */
 export function wordIdsInCues(
   cues: {text: string}[],
   index: Map<string, LexiconEntry>,
   lang: Lang,
 ): string[] {
-  const ids = new Set<string>();
-  cues.forEach(cue =>
-    tokenize(cue.text, lang, index).forEach(seg => {
-      if (seg.wordId) {
-        ids.add(seg.wordId);
-      }
-    }),
-  );
-  return [...ids];
+  return [...wordCountsInCues(cues, index, lang).keys()];
 }
 
 /**

@@ -11,6 +11,7 @@ import {ManageAccountsScreen} from './screens/ManageAccountsScreen';
 import {DeleteAccountScreen} from './screens/DeleteAccountScreen';
 import {loadCaptions} from './captions/captionSource';
 import {MasteryMap} from './learning/mastery';
+import {QuizAnswer} from './learning/summary';
 import {Cue, Lang, Settings} from './learning/types';
 import {sampleLexicon} from './data/sampleLexicon';
 import {LANGUAGES, languageLabel} from './data/languages';
@@ -19,7 +20,7 @@ import {defaultSettings} from './storage/progress';
 import {AppState, User, loadState, saveState} from './users/userStore';
 
 // Launch: no users -> onboarding; otherwise -> choose user.
-// Then: home -> quiz (covers the video's words) -> video -> summary -> (restart quiz or home).
+// Then: home -> quiz (new and due words; skipped when empty) -> video -> summary -> (restart quiz or home).
 type Screen =
   | 'loading'
   | 'onboarding'
@@ -36,6 +37,7 @@ export const App = () => {
   const [screen, setScreen] = useState<Screen>('loading');
   const [state, setState] = useState<AppState>({users: [], currentUserId: null});
   const [coveredIds, setCoveredIds] = useState<string[]>([]);
+  const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   // Captions are loaded up front so the quiz can cover the words in the video.
   const [cues, setCues] = useState<Cue[] | null>(null);
@@ -167,7 +169,10 @@ export const App = () => {
           mastery={mastery}
           targetLang={targetLang}
           onMasteryChange={next => updateCurrentUser({mastery: next})}
-          onDone={() => setScreen('player')}
+          onDone={answers => {
+            setQuizAnswers(answers);
+            setScreen('player');
+          }}
           onExit={() => setScreen('home')}
         />
       )}
@@ -177,7 +182,6 @@ export const App = () => {
           settings={settings}
           lexicon={lexicon}
           mastery={mastery}
-          onMasteryChange={next => updateCurrentUser({mastery: next})}
           onFinished={ids => {
             setCoveredIds(ids);
             setScreen('summary');
@@ -187,10 +191,10 @@ export const App = () => {
       )}
       {screen === 'summary' && (
         <SummaryScreen
+          answers={quizAnswers}
           coveredIds={coveredIds}
           lexicon={lexicon}
           mastery={mastery}
-          glossThreshold={settings.glossThreshold}
           onRestart={() => setScreen('quiz')}
           onHome={() => setScreen('home')}
         />

@@ -1,55 +1,66 @@
 import React, {useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusButton} from '../components/FocusButton';
-import {MasteryMap, getScore} from '../learning/mastery';
+import {MasteryMap} from '../learning/mastery';
+import {QuizAnswer, lessonSummary} from '../learning/summary';
 import {LexiconEntry} from '../learning/types';
 
-const MAX_ROWS = 4;
-
 interface Props {
+  /** The quiz's answers; empty when the quiz was skipped or had nothing to ask. */
+  answers: QuizAnswer[];
+  /** The lexicon words spoken in the video. */
   coveredIds: string[];
   lexicon: LexiconEntry[];
   mastery: MasteryMap;
-  glossThreshold: number;
   onRestart: () => void;
   onHome: () => void;
 }
 
-/** Shown after the video: the Chinese words it covered, and how many are now learnt. */
+/** Shown after the video: what the quiz changed, and how many of the video's words are still glossed. */
 export const SummaryScreen = ({
+  answers,
   coveredIds,
   lexicon,
   mastery,
-  glossThreshold,
   onRestart,
   onHome,
 }: Props) => {
-  const words = useMemo(
-    () =>
-      lexicon
-        .filter(e => e.lang === 'zh' && coveredIds.includes(e.id))
-        .sort((a, b) => a.level - b.level),
-    [lexicon, coveredIds],
+  const summary = useMemo(
+    () => lessonSummary(answers, coveredIds, mastery),
+    [answers, coveredIds, mastery],
   );
-  const learnt = words.filter(w => getScore(mastery, w.id) >= glossThreshold).length;
+  const byId = useMemo(() => new Map(lexicon.map(e => [e.id, e])), [lexicon]);
+  const groups = [
+    {title: 'Newly learnt', ids: summary.newlyLearnt, style: styles.learnt},
+    {title: 'Reviewed and kept', ids: summary.kept, style: styles.kept},
+    {title: 'Lapsed', ids: summary.lapsed, style: styles.lapsed},
+  ].filter(g => g.ids.length > 0);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Lesson summary</Text>
-      <Text style={styles.text}>
-        {words.length} words covered, {learnt} learnt.
-      </Text>
-      {words.length === 0 ? (
-        <Text style={styles.text}>No lexicon words appeared in this video.</Text>
+      {groups.length === 0 ? (
+        <Text style={styles.text}>No quiz answers this time.</Text>
       ) : null}
-      {words.slice(0, MAX_ROWS).map(w => (
-        <Text key={w.id} style={styles.row}>
-          {w.word}  {w.pinyin}  {w.gloss}
-        </Text>
+      {groups.map(g => (
+        <View key={g.title} style={styles.group}>
+          <Text style={[styles.heading, g.style]}>
+            {g.title} ({g.ids.length})
+          </Text>
+          <Text style={styles.row}>
+            {g.ids
+              .map(id => byId.get(id))
+              .filter((e): e is LexiconEntry => !!e)
+              .map(e => `${e.word} ${e.pinyin ?? ''} ${e.gloss}`.replace(/\s+/g, ' '))
+              .join('   ·   ')}
+          </Text>
+        </View>
       ))}
-      {words.length > MAX_ROWS ? (
-        <Text style={styles.text}>+ {words.length - MAX_ROWS} more</Text>
-      ) : null}
+      <Text style={styles.text}>
+        {summary.stillGlossed === 1
+          ? '1 word in this video is still glossed.'
+          : `${summary.stillGlossed} words in this video are still glossed.`}
+      </Text>
       <View style={styles.buttons}>
         <FocusButton label="Restart lesson" onPress={onRestart} hasTVPreferredFocus compact />
         <FocusButton label="Home" onPress={onHome} compact />
@@ -61,8 +72,13 @@ export const SummaryScreen = ({
 // Padding keeps content inside the TV's safe area at top and bottom.
 const styles = StyleSheet.create({
   container: {flex: 1, justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 48},
-  title: {color: '#FFFFFF', fontSize: 44, fontWeight: '600'},
+  title: {color: '#FFFFFF', fontSize: 44, fontWeight: '600', marginBottom: 8},
   text: {color: '#FFFFFF', fontSize: 24, marginVertical: 4},
-  row: {color: '#FFD966', fontSize: 24, marginVertical: 2},
+  group: {marginVertical: 6},
+  heading: {fontSize: 26, fontWeight: '600'},
+  learnt: {color: '#9FE8A0'},
+  kept: {color: '#FFD966'},
+  lapsed: {color: '#FFB3B3'},
+  row: {color: '#FFFFFF', fontSize: 22, marginTop: 2},
   buttons: {flexDirection: 'row', marginTop: 16},
 });

@@ -24,7 +24,6 @@ const SETTINGS_KEY = 'captlearn.settings';
 export const defaultSettings: Settings = {
   nativeLang: 'en',
   targetLang: 'zh',
-  glossThreshold: 0.7,
 };
 
 /** Every read and write is guarded: a failed store must never crash playback. */

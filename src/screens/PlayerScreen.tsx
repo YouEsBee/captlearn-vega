@@ -17,8 +17,7 @@ import {
   tokenize,
   wordIdsInCues,
 } from '../learning/substitute';
-import {getScore} from '../learning/mastery';
-import {MasteryMap, recordExposure} from '../learning/mastery';
+import {MasteryMap, isLearnt} from '../learning/mastery';
 import {Cue, LexiconEntry, Settings} from '../learning/types';
 import {BACKEND_URL} from '../config';
 
@@ -27,7 +26,6 @@ interface Props {
   settings: Settings;
   lexicon: LexiconEntry[];
   mastery: MasteryMap;
-  onMasteryChange: (next: MasteryMap) => void;
   /** Called when the video ends or the learner presses Finish, with the word ids it covered. */
   onFinished: (coveredIds: string[]) => void;
   onExit: () => void;
@@ -38,7 +36,6 @@ export const PlayerScreen = ({
   settings,
   lexicon,
   mastery,
-  onMasteryChange,
   onFinished,
   onExit,
 }: Props) => {
@@ -180,38 +177,20 @@ export const PlayerScreen = ({
       return [];
     }
     const learnt = tokenize(cue.text, settings.targetLang, index)
-      .filter(t => t.wordId && getScore(mastery, t.wordId) >= settings.glossThreshold)
+      .filter(t => t.wordId && isLearnt(mastery, t.wordId))
       .map(t => entriesById.get(t.wordId ?? ''))
       .filter((e): e is LexiconEntry => !!e)
       .map(e => ({gloss: e.gloss, zh: e.word}));
     return splitNativeLine(cue.native ?? '', learnt);
-  }, [cue, settings.targetLang, settings.glossThreshold, index, entriesById, mastery]);
+  }, [cue, settings.targetLang, index, entriesById, mastery]);
 
   const segments = useMemo(() => {
     if (!cue) {
       return [];
     }
     const tokens = tokenize(cue.text, settings.targetLang, index);
-    return applyGlosses(tokens, entriesById, mastery, settings.glossThreshold);
-  }, [cue, settings.targetLang, settings.glossThreshold, index, entriesById, mastery]);
-
-  // Count each word once per cue it appears in, so the mastery data reflects exposure.
-  useEffect(() => {
-    if (!cue) {
-      return;
-    }
-    const ids = segments.map(s => s.wordId).filter((x): x is string => !!x);
-    if (ids.length === 0) {
-      return;
-    }
-    let next = mastery;
-    ids.forEach(id => {
-      next = recordExposure(next, id);
-    });
-    onMasteryChange(next);
-    // Only react to the cue changing, not every mastery update.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cue?.start]);
+    return applyGlosses(tokens, entriesById, mastery);
+  }, [cue, settings.targetLang, index, entriesById, mastery]);
 
   return (
     <View style={styles.container}>

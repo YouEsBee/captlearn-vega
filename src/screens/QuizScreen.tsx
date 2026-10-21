@@ -1,8 +1,9 @@
-import React, {ReactNode, useMemo, useState} from 'react';
+import React, {ReactNode, useEffect, useMemo, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusButton} from '../components/FocusButton';
-import {MasteryMap, markLearnt, recordAnswer} from '../learning/mastery';
-import {indexLexicon, wordIdsInCues} from '../learning/substitute';
+import {MasteryMap, answerOutcome, recordAnswer} from '../learning/mastery';
+import {buildQuiz} from '../learning/quiz';
+import {QuizAnswer} from '../learning/summary';
 import {Cue, LexiconEntry, Lang} from '../learning/types';
 
 interface Props {
@@ -12,35 +13,9 @@ interface Props {
   mastery: MasteryMap;
   targetLang: Lang;
   onMasteryChange: (next: MasteryMap) => void;
-  onDone: () => void;
+  /** Called when the learner moves on to the video, with the answers given so far. */
+  onDone: (answers: QuizAnswer[]) => void;
   onExit: () => void;
-}
-
-interface Question {
-  entry: LexiconEntry;
-  choices: string[];
-}
-
-/** One question per lexicon word that appears in the video, in the order it is spoken. */
-function buildQuestions(
-  lexicon: LexiconEntry[],
-  cues: Cue[],
-  targetLang: Lang,
-): Question[] {
-  const pool = lexicon.filter(e => e.lang === targetLang);
-  const byId = new Map(pool.map(e => [e.id, e]));
-  const index = indexLexicon(pool);
-  const entries = wordIdsInCues(cues, index, targetLang)
-    .map(id => byId.get(id))
-    .filter((e): e is LexiconEntry => !!e);
-  return entries.map(entry => {
-    const distractors = pool
-      .filter(e => e.id !== entry.id && e.gloss !== entry.gloss)
-      .map(e => e.gloss)
-      .slice(0, 3);
-    const choices = [entry.gloss, ...distractors].sort(() => Math.random() - 0.5);
-    return {entry, choices};
-  });
 }
 
 /** The result of the current question, shown until the learner presses Next. */
@@ -59,36 +34,48 @@ export const QuizScreen = ({
   onDone,
   onExit,
 }: Props) => {
+  // The quiz is picked from progress as it was when the quiz opened, so answering doesn't reshuffle it.
+  const [opening] = useState(() => ({mastery, now: Date.now()}));
   const questions = useMemo(
-    () => (cues ? buildQuestions(lexicon, cues, targetLang) : []),
-    [lexicon, cues, targetLang],
+    () =>
+      cues
+        ? buildQuiz({lexicon, cues, targetLang, mastery: opening.mastery, now: opening.now})
+        : [],
+    [lexicon, cues, targetLang, opening],
   );
   const [asked, setAsked] = useState(0);
+  const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [correct, setCorrect] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [current, setCurrent] = useState<MasteryMap>(mastery);
 
+  // Nothing to quiz: go straight to the video.
+  const nothingToQuiz = !!cues && questions.length === 0;
+  useEffect(() => {
+    if (nothingToQuiz) {
+      onDone([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nothingToQuiz]);
+
+  // Skipping leaves the remaining words untouched; answers already given still count.
+  const skip = () => onDone(answers);
+
   // Back sits above the content on every quiz screen, as text with no border.
-  const Frame = ({children}: {children: ReactNode}) => (
+  const Frame = ({children, canSkip}: {children: ReactNode; canSkip?: boolean}) => (
     <View style={styles.container}>
-      <FocusButton label="‹ Exit Quiz" onPress={onExit} variant="text" />
+      <View style={styles.header}>
+        <FocusButton label="‹ Exit Quiz" onPress={onExit} variant="text" />
+        {canSkip ? <FocusButton label="Skip Quiz" onPress={skip} variant="text" /> : null}
+      </View>
       <View style={styles.body}>{children}</View>
     </View>
   );
 
-  if (!cues) {
+  if (!cues || nothingToQuiz) {
     return (
       <Frame>
         <Text style={styles.text}>Loading the lesson...</Text>
-      </Frame>
-    );
-  }
-
-  if (questions.length === 0) {
-    return (
-      <Frame>
-        <Text style={styles.text}>No lexicon words appear in this video.</Text>
-        <FocusButton label="Watch video" onPress={onDone} hasTVPreferredFocus compact />
       </Frame>
     );
   }
@@ -102,10 +89,15 @@ export const QuizScreen = ({
             {correct} of {questions.length} correct.
           </Text>
           <Text style={styles.text}>
-            Correct words will be blanked in the video's English line.
+            Learnt words will be blanked in the video's English line.
           </Text>
         </View>
-        <FocusButton label="Watch video" onPress={onDone} hasTVPreferredFocus compact />
+        <FocusButton
+          label="Watch video"
+          onPress={() => onDone(answers)}
+          hasTVPreferredFocus
+          compact
+        />
       </Frame>
     );
   }
@@ -114,12 +106,13 @@ export const QuizScreen = ({
   const isLast = asked + 1 >= questions.length;
 
   const answer = (choice: string) => {
+    const id = question.entry.id;
     const isRight = choice === question.entry.gloss;
-    // A correct answer means the word is learnt, so its English is blanked in the video.
-    const answered = recordAnswer(current, question.entry.id, isRight);
-    const next = isRight ? markLearnt(answered, question.entry.id) : answered;
+    const outcome = answerOutcome(current, id, isRight);
+    const next = recordAnswer(current, id, isRight, Date.now());
     setCurrent(next);
     onMasteryChange(next);
+    setAnswers(prev => [...prev, {wordId: id, outcome}]);
     if (isRight) {
       setCorrect(c => c + 1);
     }
@@ -137,7 +130,7 @@ export const QuizScreen = ({
   };
 
   return (
-    <Frame>
+    <Frame canSkip>
       <View style={styles.question}>
         <Text style={styles.small}>
           Question {asked + 1} of {questions.length}
@@ -185,6 +178,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 64,
     paddingVertical: 48,
   },
+  header: {flexDirection: 'row', justifyContent: 'space-between'},
   body: {
     flex: 1,
     flexDirection: 'row',

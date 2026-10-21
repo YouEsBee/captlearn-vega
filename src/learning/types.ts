@@ -3,7 +3,6 @@ export type Lang = 'en' | 'zh' | 'ja' | 'ko' | 'es' | 'vi';
 export interface Settings {
   nativeLang: Lang; // language the learner already knows (glosses use this)
   targetLang: Lang; // language of the captions being learned
-  glossThreshold: number; // words with mastery below this get a gloss; at or above, their English is blanked
 }
 
 export interface Cue {
@@ -22,11 +21,12 @@ export interface LexiconEntry {
   level: number; // 1 = easiest
 }
 
+/** A word's quiz progress. A word with no entry is new. */
 export interface Mastery {
   wordId: string;
-  score: number; // 0..1
-  seen: number;
-  correct: number;
+  learnt: boolean; // the most recent quiz answer was correct
+  box: number; // Leitner box, 1 = shortest gap
+  due: number; // epoch ms when the word is next due for review
 }
 
 /** One piece of a caption line after substitution. */
