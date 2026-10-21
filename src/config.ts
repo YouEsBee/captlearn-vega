@@ -1,5 +1,4 @@
-// Backend address as seen from the TV. "localhost" won't work on the device, so use
-// your computer's local network IP (for example http://192.168.1.10:8080).
-
-// local host since emulator runs on computer
-export const BACKEND_URL = 'https://occurrence-elder-kate-violations.trycloudflare.com';
+// The backend's address as seen from the TV, written in at build time from BACKEND_URL in the
+// environment or in a .env file at the project root (see README). "localhost" won't work on a
+// device. Empty when the build had none: the app then says so instead of loading.
+export const BACKEND_URL: string = process.env.BACKEND_URL ?? '';

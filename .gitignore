@@ -20,9 +20,8 @@ coverage/
 .env.*
 !.env.example
 
-# Backend media and generated captions (large and reproducible)
+# Backend media: each video's file, thumbnail, captions and lexicon (large)
 backend/media/
-backend/cache/
 
 # Dictionary sources for lexicons (CC-CEDICT and the HSK list), downloaded separately
 backend/data/

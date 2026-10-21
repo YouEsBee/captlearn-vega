@@ -1,8 +1,8 @@
 import React, {useState} from 'react';
-import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {formatLength} from '../catalogue/catalogue';
 import {Video} from '../catalogue/types';
-import {thumbnailUrl} from '../data/catalogue';
+import {thumbnailUrl} from '../catalogue/catalogueSource';
 
 interface Props {
   video: Video;
@@ -48,9 +48,11 @@ export const VideoCard = ({video, watched, newWordCount, hasTVPreferredFocus, on
           {video.title}
         </Text>
         <View style={styles.meta}>
-          <Text style={styles.newWords}>
-            {newWordCount === undefined ? ' ' : newWordsLabel(newWordCount)}
-          </Text>
+          {newWordCount === undefined ? (
+            <ActivityIndicator size="small" color="#FFD966" />
+          ) : (
+            <Text style={styles.newWords}>{newWordsLabel(newWordCount)}</Text>
+          )}
           <Text style={styles.credit}>{video.credit}</Text>
         </View>
       </View>

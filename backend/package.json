@@ -2,10 +2,11 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "gemini.js",
+  "main": "server.js",
   "scripts": {
     "test": "node --test",
     "start": "node server.js",
+    "captions": "node makeCaptions.js",
     "lexicon": "node makeLexicon.js"
   },
   "keywords": [],

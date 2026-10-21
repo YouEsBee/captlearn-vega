@@ -1,6 +1,7 @@
 import React, {ReactNode, useEffect, useMemo, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusButton} from '../components/FocusButton';
+import {Spinner} from '../components/Spinner';
 import {MasteryMap, answerOutcome, recordAnswer} from '../learning/mastery';
 import {buildQuiz} from '../learning/quiz';
 import {QuizAnswer} from '../learning/summary';
@@ -75,7 +76,7 @@ export const QuizScreen = ({
   if (!cues || nothingToQuiz) {
     return (
       <Frame>
-        <Text style={styles.text}>Loading the lesson...</Text>
+        <Spinner label="Loading the lesson..." />
       </Frame>
     );
   }

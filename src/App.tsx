@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ImageBackground, StyleSheet} from 'react-native';
 import {HomeScreen} from './screens/HomeScreen';
 import {PlayerScreen} from './screens/PlayerScreen';
@@ -10,8 +10,12 @@ import {SettingsScreen} from './screens/SettingsScreen';
 import {ManageAccountsScreen} from './screens/ManageAccountsScreen';
 import {DeleteAccountScreen} from './screens/DeleteAccountScreen';
 import {CreditsScreen} from './screens/CreditsScreen';
+import {ServerErrorScreen} from './screens/ServerErrorScreen';
+import {Spinner} from './components/Spinner';
 import {loadCaptions} from './captions/captionSource';
 import {newWordCount, nextVideo} from './catalogue/catalogue';
+import {loadCatalogue, thumbnailUrl} from './catalogue/catalogueSource';
+import {Video} from './catalogue/types';
 import {MasteryMap} from './learning/mastery';
 import {indexLexicon, wordIdsInCues} from './learning/substitute';
 import {QuizAnswer} from './learning/summary';
@@ -19,7 +23,6 @@ import {Cue, Lang, LexiconEntry, Settings} from './learning/types';
 import {mergeLexicons} from './lexicon/lexicon';
 import {loadLexicon} from './lexicon/lexiconSource';
 import {LANGUAGES, languageLabel} from './data/languages';
-import {CATALOGUE} from './data/catalogue';
 import {defaultSettings} from './storage/progress';
 import {AppState, User, loadState, saveState} from './users/userStore';
 
@@ -46,27 +49,43 @@ export const App = () => {
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   // The video picked on the home screen, or by "Watch next".
-  const [videoId, setVideoId] = useState<string>(CATALOGUE[0].id);
+  const [videoId, setVideoId] = useState<string>('');
+  // The catalogue from the backend; empty until it loads.
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [backendDown, setBackendDown] = useState(false);
   // Every catalogue video's captions and lexicon are loaded up front: the quiz covers the words
   // in the video, and each home screen card counts its new words.
   const [cuesByVideo, setCuesByVideo] = useState<Record<string, Cue[]>>({});
   const [lexiconByVideo, setLexiconByVideo] = useState<Record<string, LexiconEntry[]>>({});
+
+  // The catalogue, then each video's captions and lexicon: all static files on the backend.
+  // A video's captions and lexicon are set together, so the quiz never opens on captions
+  // without their words.
+  const loadVideos = useCallback(() => {
+    setBackendDown(false);
+    loadCatalogue()
+      .then(list => {
+        setVideos(list);
+        list.forEach(v =>
+          Promise.all([loadCaptions(v.id), loadLexicon(v.id)]).then(([cues, entries]) => {
+            setCuesByVideo(prev => ({...prev, [v.id]: cues}));
+            setLexiconByVideo(prev => ({...prev, [v.id]: entries}));
+          }),
+        );
+      })
+      .catch(err => {
+        console.warn('[catalogue] cannot load:', err);
+        setBackendDown(true);
+      });
+  }, []);
 
   useEffect(() => {
     loadState().then(loaded => {
       setState(loaded);
       setScreen(loaded.users.length === 0 ? 'onboarding' : 'choose');
     });
-    // The backend makes a video's lexicon with its captions, so it is fetched after them.
-    // Both are set together, so the quiz never opens on captions without their words.
-    CATALOGUE.forEach(v =>
-      loadCaptions(v.id).then(async cues => {
-        const entries = await loadLexicon(v.id);
-        setCuesByVideo(prev => ({...prev, [v.id]: cues}));
-        setLexiconByVideo(prev => ({...prev, [v.id]: entries}));
-      }),
-    );
-  }, []);
+    loadVideos();
+  }, [loadVideos]);
 
   // Functional updates, so rapid mastery changes never overwrite each other.
   const update = (change: (prev: AppState) => AppState) =>
@@ -79,14 +98,14 @@ export const App = () => {
   const user: User | undefined = state.users.find(u => u.id === state.currentUserId);
   // Every video's words, so the quiz can bring back due words from earlier videos.
   const lexicon = useMemo(
-    () => mergeLexicons(CATALOGUE.map(v => lexiconByVideo[v.id] ?? [])),
-    [lexiconByVideo],
+    () => mergeLexicons(videos.map(v => lexiconByVideo[v.id] ?? [])),
+    [videos, lexiconByVideo],
   );
   const targetLang: Lang = user?.targetLang ?? 'zh';
   const settings: Settings = {...defaultSettings, targetLang};
   const mastery: MasteryMap = user?.mastery ?? {};
   const watched = user?.watched ?? [];
-  const nextUnwatched = nextVideo(CATALOGUE, watched);
+  const nextUnwatched = nextVideo(videos, watched);
 
   // Each video's lexicon words, in the order they are first spoken.
   const wordsByVideo = useMemo(() => {
@@ -156,6 +175,19 @@ export const App = () => {
     updateCurrentUser(u => ({...u, targetLang: available[(at + 1) % available.length].code}));
   };
 
+  // Every screen waits for the catalogue, and nothing works without the backend.
+  if (backendDown || screen === 'loading' || videos.length === 0) {
+    return (
+      <ImageBackground source={require('./assets/background.png')} style={styles.background}>
+        {backendDown ? (
+          <ServerErrorScreen onRetry={loadVideos} />
+        ) : (
+          <Spinner label="Loading CaptLearn..." />
+        )}
+      </ImageBackground>
+    );
+  }
+
   return (
     <ImageBackground
       source={require('./assets/background.png')}
@@ -182,7 +214,7 @@ export const App = () => {
           onSwitchUser={() => setScreen('choose')}
           onCreateUser={() => setScreen('onboarding')}
           onOpenSettings={() => setScreen('settings')}
-          videos={CATALOGUE}
+          videos={videos}
           watched={watched}
           newWordCounts={newWordCounts}
           onPickVideo={pickVideo}
@@ -231,6 +263,8 @@ export const App = () => {
       {screen === 'player' && (
         <PlayerScreen
           videoId={videoId}
+          thumbnail={thumbnailUrl(videoId)}
+          cues={cuesByVideo[videoId] ?? []}
           settings={settings}
           lexicon={lexicon}
           mastery={mastery}

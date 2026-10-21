@@ -1,4 +1,10 @@
-import {catalogueRows, formatLength, newWordCount, nextVideo} from '../../src/catalogue/catalogue';
+import {
+  catalogueRows,
+  formatLength,
+  newWordCount,
+  nextVideo,
+  parseCatalogue,
+} from '../../src/catalogue/catalogue';
 import {recordAnswer} from '../../src/learning/mastery';
 import {Video} from '../../src/catalogue/types';
 
@@ -47,5 +53,20 @@ describe('video length on a card', () => {
     expect(formatLength(65)).toBe('1:05');
     expect(formatLength(180)).toBe('3:00');
     expect(formatLength(42.6)).toBe('0:43');
+  });
+});
+
+describe('reading the catalogue list from the backend', () => {
+  it('takes its videos in suggested order', () => {
+    expect(parseCatalogue([video('b', 2), video('a', 1)])).toEqual([video('b', 2), video('a', 1)]);
+  });
+
+  it('drops videos a hand edit has broken, keeping the rest', () => {
+    const broken = [{...video('c', 1), level: 'one'}, {id: 'd', title: 'd'}, null];
+    expect(parseCatalogue([video('a', 1), ...broken])).toEqual([video('a', 1)]);
+  });
+
+  it('is empty when the response is not a list', () => {
+    expect(parseCatalogue({error: 'not found'})).toEqual([]);
   });
 });

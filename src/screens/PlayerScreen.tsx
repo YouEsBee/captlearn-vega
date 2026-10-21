@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Image, StyleSheet, Text, View} from 'react-native';
 import {useKeplerAppStateManager} from '@amazon-devices/react-native-kepler';
 import {
   KeplerVideoSurfaceView,
@@ -8,8 +8,8 @@ import {
 import {AppOverrideMediaControlHandler} from '../utils/AppOverrideMediaControlHandler';
 import {CaptionOverlay} from '../components/CaptionOverlay';
 import {FocusButton} from '../components/FocusButton';
-import {activeCue} from '../captions/parseCues';
-import {loadCaptions} from '../captions/captionSource';
+import {Spinner} from '../components/Spinner';
+import {activeCue} from '../captions/captions';
 import {
   applyGlosses,
   splitNativeLine,
@@ -19,10 +19,14 @@ import {
 } from '../learning/substitute';
 import {MasteryMap, isLearnt} from '../learning/mastery';
 import {Cue, LexiconEntry, Settings} from '../learning/types';
-import {videoUrl} from '../data/catalogue';
+import {videoUrl} from '../catalogue/catalogueSource';
 
 interface Props {
   videoId: string;
+  /** The video's thumbnail, shown until playback starts. */
+  thumbnail: string;
+  /** The video's captions, made ahead of time. */
+  cues: Cue[];
   settings: Settings;
   lexicon: LexiconEntry[];
   mastery: MasteryMap;
@@ -33,25 +37,17 @@ interface Props {
 
 export const PlayerScreen = ({
   videoId,
+  thumbnail,
+  cues,
   settings,
   lexicon,
   mastery,
   onFinished,
   onExit,
 }: Props) => {
-  const [cues, setCues] = useState<Cue[]>([]);
   // On-screen status, so problems show up without the developer console.
   const [status, setStatus] = useState<string[]>(['starting']);
   const addStatus = (line: string) => setStatus(s => [...s.slice(-5), line]);
-
-  useEffect(() => {
-    loadCaptions(videoId).then(loaded => {
-      setCues(loaded);
-      addStatus(`captions: ${loaded.length} lines`);
-    });
-    // addStatus only uses the setter, so it's safe to omit from deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId]);
 
   const index = useMemo(() => indexLexicon(lexicon), [lexicon]);
   const entriesById = useMemo(
@@ -64,6 +60,10 @@ export const PlayerScreen = ({
   const componentInstance = keplerAppStateManager.getComponentInstance();
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  // The thumbnail and a spinner cover the screen until playback first starts.
+  const [started, setStarted] = useState(false);
+  // Set when the video can't load or play, so the cover says so instead of spinning.
+  const [failed, setFailed] = useState(false);
   // The surface is only rendered once the media has loaded (same order as the Vega sample).
   const [mediaLoaded, setMediaLoaded] = useState(false);
 
@@ -94,6 +94,7 @@ export const PlayerScreen = ({
       const internal = event?.target?.mediaControlStateUtil?.mError;
       const code = std?.code ?? internal?.code_ ?? 'none';
       const message = std?.message ?? internal?.message_ ?? 'no message';
+      setFailed(true);
       addStatus(`media error code=${code}`);
       addStatus(`detail: ${String(message).slice(0, 80)}`);
       addStatus(`event keys: ${Object.keys(event ?? {}).join(',').slice(0, 60)}`);
@@ -150,9 +151,13 @@ export const PlayerScreen = ({
       .play()
       .then(() => {
         setPlaying(true);
+        setStarted(true);
         addStatus('playing');
       })
-      .catch(err => addStatus(`play error: ${String(err)}`));
+      .catch(err => {
+        setFailed(true);
+        addStatus(`play error: ${String(err)}`);
+      });
   };
 
   const onSurfaceViewDestroyed = (surfaceHandle: string) => {
@@ -166,6 +171,7 @@ export const PlayerScreen = ({
     } else {
       video.current.play();
       setPlaying(true);
+      setStarted(true);
     }
   };
 
@@ -201,6 +207,17 @@ export const PlayerScreen = ({
             onSurfaceViewCreated={onSurfaceViewCreated}
             onSurfaceViewDestroyed={onSurfaceViewDestroyed}
           />
+        </View>
+      )}
+
+      {!started && (
+        <View style={styles.cover}>
+          <Image source={{uri: thumbnail}} style={styles.cover} resizeMode="cover" />
+          {failed ? (
+            <Text style={styles.failed}>This video can't play right now. Press Back and try again.</Text>
+          ) : (
+            <Spinner />
+          )}
         </View>
       )}
 
@@ -244,6 +261,16 @@ const styles = StyleSheet.create({
   // Transparent, so the video surface underneath isn't covered by a black background.
   container: {flex: 1, backgroundColor: 'transparent'},
   video: {...StyleSheet.absoluteFillObject},
+  cover: {...StyleSheet.absoluteFillObject, backgroundColor: '#000000', justifyContent: 'center'},
+  failed: {
+    alignSelf: 'center',
+    color: '#FFFFFF',
+    fontSize: 28,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
   controls: {
     position: 'absolute',
     top: 32,
