@@ -2,7 +2,7 @@
 
 Research for store-launch ticket 01 (`.scratch/store-launch/issues/01-vega-store-requirements.md`): what a Vega OS (Fire TV) app must meet to be accepted on the Amazon Appstore for its first public release.
 
-Sources read on 2026-10-21. Vega docs are version 0.24, which the docs site marks as latest. Every claim links to the page it came from; "not found" means the primary source was checked and says nothing on the point. This is not legal advice: the licensing and age questions in sections 4 and 5 need a lawyer before launch.
+Sources read on 2026-10-21. Vega docs are version 0.24, which the docs site marks as latest. React Native for Vega API pages (such as BackHandler) use their own version scheme, which tracks the React Native release (0.83). Every claim links to the page it came from; "not found" means the primary source was checked and says nothing on the point. This is not legal advice: the licensing and age questions in sections 4 and 5 need a lawyer before launch.
 
 ## Summary
 
@@ -39,7 +39,7 @@ From the [submission and compliance blog (Feb 2025)](https://developer.amazon.co
 
 ### Before you submit
 
-- **Physical device:** test on a Fire TV Stick; the Vega Virtual Device is not enough ([Test Before Submission](https://developer.amazon.com/docs/vega/0.24/test-before-submission.html)). The page names the Fire TV Stick 4K Select as the supported Vega device.
+- **Physical device:** test on a Fire TV Stick; the Vega Virtual Device is not enough ([Test Before Submission](https://developer.amazon.com/docs/vega/0.24/test-before-submission.html)).
 - **Presubmission checklist** ([checklist](https://developer.amazon.com/docs/app-submission/presubmission-checklist.html)):
   - Be ready to show licences for any third-party IP.
   - Amazon may ask for test login credentials.
@@ -81,7 +81,7 @@ Amazon runs these on submitted apps.
 - **2.3:** show a loading indicator if loading takes more than 15 s. This applies to Gemini caption jobs.
 - **2.5 and 2.7:** no crashes or hard locks; the frame rate never stays below 25 fps.
 - **2.6:** don't buffer video to eMMC; keep foreground writes under 50 MB/hr.
-- **2.9:** fill at least 80 to 90% of the screen.
+- **2.9:** fill the screen. Full compatibility needs 90%, and 80% still passes only if the app is centred and not in a corner.
 - **2.11:** show a visible focus highlight.
 - **2.13:** no screen traps; users must never be forced out with Home.
 - **2.18 and 3.13:** handle audio focus correctly.
@@ -89,7 +89,7 @@ Amazon runs these on submitted apps.
 - **2.22:** exit within 2 s of pressing Home.
 - **3.1 and 3.2:** core features, and every feature in the listing, must work.
 - **3.7 and 3.8:** saved data survives restart and update.
-- **3.14:** video apps must never let the device enter daydream or standby.
+- **3.14:** while playing content, video apps must keep the screen on (`FLAG_KEEP_SCREEN_ON`) and never enter daydream or standby.
 - **Group 4 (remote):**
   - 4.1: Select acts on the focused item.
   - 4.3: the D-pad moves focus.
@@ -106,14 +106,14 @@ Amazon runs these on submitted apps.
 - **Focus model:** Vega uses Cartesian D-pad focus by default. You can override it with `nextFocus*` props, `FocusManager` and `TVFocusGuideView` ([Focus Management](https://developer.amazon.com/docs/vega/0.24/focus-management.html)).
 - **Initial focus:** `hasTVPreferredFocus` works only on first mount.
 - **Focus indicator:** Vega gives most components no focus styling, so the app must draw its own. Amazon recommends a border or size change that stays visible in High Contrast mode.
-- **Focus restoration:** Vega has no built-in focus restoration ("Vega does not provide built-in focus restoration capabilities"). Store the last focused element per screen and restore it with `FocusManager.setFocus()` when the screen returns.
+- **Focus restoration:** "The Vega platform does not provide built-in focus restoration capabilities." The page says some React Navigation stack navigators restore focus, but its table marks both `@amazon-devices/react-navigation__stack` and `__native-stack` as having no automatic focus restoration. Store the last focused element per screen and restore it with `FocusManager.setFocus()` when the screen returns.
 - **Fire TV rules** ([Design and UX Guidelines](https://developer.amazon.com/docs/fire-tv/design-and-user-experience-guidelines.html)): every actionable element must be reachable with the D-pad, and Select briefly shows a selected state.
 - **Text entry:** keep text entry to a minimum (test 2.10). CaptLearn's onboarding nickname entry is the only place it types; keep it short.
 
 ### Back button
 
 - **Default on Vega:** if no `BackHandler` listener returns `true`, Vega "programmatically invokes the default back button functionality to exit the app" ([BackHandler, RN for Vega 0.83](https://developer.amazon.com/docs/react-native-vega/0.83/backhandler.html)). Listeners run newest-first.
-- **Requirement:** test 4.5 expects Back to go to the previous screen without force closing or looping. Exiting is fine from the top-level screen.
+- **Requirement:** test 4.5 expects Back to go to the previous screen without force closing or entering an infinite loop. It also says "Use of the Back button is not required". Exiting from the top-level screen isn't covered by 4.5; treating it as acceptable is an inference from the BackHandler default and the WebView guidance below.
 - **Recommended pattern:** Amazon's WebView TV guidance ([WebView best practices](https://developer.amazon.com/docs/vega/0.24/webview-development-best-practices-tv.html)) recommends going back through earlier screens first. At the top level, show a popup before closing the app.
 - **CaptLearn today:**
   - `App.tsx` switches screens with React state, and nothing in `src/` registers a `BackHandler`.
@@ -134,7 +134,7 @@ Amazon runs these on submitted apps.
 The safe-area rules are in the Fire TV [Design and UX Guidelines](https://developer.amazon.com/docs/fire-tv/design-and-user-experience-guidelines.html). That page is Fire OS docs from 2020; the Vega docs set no separate safe-area rule.
 
 - **Design size:** design for 1920×1080.
-- **Overscan:** keep all UI out of the outer 5% of each edge. Keep focused items and text inside the inner 90%. At 1080p that means 96 px left and right and 54 px top and bottom (my arithmetic).
+- **Overscan:** keep all UI out of the outer 5% of each edge. Keep focused items and text inside the inner 90%. At 1080p that means 96 px left and right and 54 px top and bottom (derived from the 5% rule; the page gives no pixel values).
 - **Text size:** body text at least 14sp, about 28 px at 1080p. Everything must be readable from about 10 feet (test 2.10).
 - **Captions:** CaptLearn's caption overlay (`CaptionOverlay.tsx`) sits 80 px from the bottom, which is fine. It sits only 64 px from the left and right edges, inside the 96 px margin, so it needs to move in.
 
@@ -148,7 +148,7 @@ The safe-area rules are in the Fire TV [Design and UX Guidelines](https://develo
   - A disclaimer does not cure it ("regardless of any disclosure or disclaimer").
   - The developer is "ultimately responsible" for holding the rights.
   - The presubmission checklist says to be ready to show the licence.
-- **What this means for issue 03 (video content sources):** for any third-party clip, the licence must cover streaming *and* creating and showing translated captions. Screenshots and the listing must not use others' logos or stills without permission.
+- **What this means for choosing video sources (store-launch ticket 03):** for any third-party clip, the licence must cover streaming *and* creating and showing translated captions. Screenshots and the listing must not use others' logos or stills without permission.
 - **User-generated content:** if the app ever lets users add or link content, it needs:
   - terms users accept before posting
   - filtering
@@ -211,8 +211,8 @@ The safe-area rules are in the Fire TV [Design and UX Guidelines](https://develo
 ### CaptLearn today
 
 - **Profiles:** nickname, target language and mastery are stored only in on-device AsyncStorage (`src/users/userStore.ts`).
-- **Backend requests:** the backend receives only a video ID and `source`/`native` language codes (`src/captions/captionSource.ts`), plus the device IP, which every HTTP request carries.
-- **Likely answer today:** if the backend logs nothing linked to a user and the app has no analytics or crash SDK, the questionnaire answer can probably be "no". I haven't seen Amazon confirm how it treats on-device-only data, so that is my inference.
+- **Backend requests:** the backend receives only a video ID and `source`/`native` language codes (`src/captions/captionSource.ts`), plus the device IP, which every HTTP request carries. The player also streams the video itself from the same backend (`${BACKEND_URL}/media/${videoId}.mp4` in `PlayerScreen.tsx`), so the backend sees one request per video watched.
+- **Likely answer today:** if the backend logs nothing linked to a user and the app has no analytics or crash SDK, the questionnaire answer can probably be "no". Amazon's pages don't say how on-device-only data is treated, so this is an inference.
 - **What flips it to "yes":** any of the following:
   - cloud accounts or progress sync
   - crash reporting or analytics (both on the release-readiness list)
@@ -269,14 +269,14 @@ The safe-area rules are in the Fire TV [Design and UX Guidelines](https://develo
 
 ## Gaps in CaptLearn found during this research
 
-These are inputs for the "TV experience polish" and "Release readiness" tickets:
+These are inputs for the "TV experience polish" and "Release readiness" items on the store-launch map (`.scratch/store-launch/map.md`). "TC" means the Fire TV test criteria; "Lifecycle" means the numbered Vega lifecycle tests in section 1.
 
-1. **Back key:** register a `BackHandler` that steps back one screen. At the top level, ask before exiting. Test 4.5.
-2. **Background playback:** add an `AppState` listener in `PlayerScreen` that pauses and releases the player, and returns to the pre-video screen on background. Vega media requirements; tests 2, 3, 4 and 5.
-3. **Focus:** confirm a visible focus border on every focusable element, and restore focus when returning to a screen. Tests 2.11 and 4.3.
+1. **Back key:** register a `BackHandler` that steps back one screen. At the top level, ask before exiting. TC 4.5.
+2. **Background playback:** add an `AppState` listener in `PlayerScreen` that pauses and releases the player, and returns to the pre-video screen on background. Vega media requirements; Lifecycle 2 to 5.
+3. **Focus:** confirm a visible focus border on every focusable element, and restore focus when returning to a screen. TC 2.11 and 4.3.
 4. **Safe area:** keep UI and captions inside the 96 px and 54 px margins. The caption overlay's 64 px side inset is too small today.
-5. **Loading:** show a loading indicator for caption jobs that take more than 15 s. Test 2.3.
-6. **Backend:** replace the Cloudflare quick-tunnel `BACKEND_URL` with a stable HTTPS backend.
+5. **Loading:** show a loading indicator for caption jobs that take more than 15 s. TC 2.3.
+6. **Backend:** replace the Cloudflare quick-tunnel `BACKEND_URL` with a stable HTTPS backend. It serves both the captions and the video stream.
 7. **Versioning:** bump the build number on every submission.
-8. **Device test:** test on a Fire TV Stick 4K Select before submitting.
+8. **Device test:** test on a physical Fire TV Stick that runs Vega before submitting.
 9. **Before launch:** decide the audience and the caption-generation provider together (section 5), and clear video and translation rights (section 3).
