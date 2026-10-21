@@ -2,13 +2,13 @@
 
 Research for store-launch ticket 03 (`.scratch/store-launch/issues/03-video-content-sources.md`): where a commercial language-learning TV app can legally get Mandarin video to stream, on what terms, and what rights it needs to add captions and translations.
 
-Sources read on 2026-10-21. Every claim links to the page it came from; "not checked" means the point was not looked up, and "not found" means it was searched for and no source covered it. This is not legal advice. Points marked **[Lawyer]** need review by a media or IP lawyer before CaptLearn relies on them, and any licence needs that review before it is signed.
+Sources read on 2026-10-21. Every claim links to the page it came from; "not checked" means the point was not looked up, and "not found" means the point was searched for and no source read says anything on it. This is not legal advice. Points marked **[Lawyer]** need review by a media or IP lawyer before CaptLearn relies on them, and any licence needs that review before it is signed.
 
 ## Summary
 
 1. **YouTube embedding doesn't fit the app.** YouTube's policies forbid charging to watch embedded videos, drawing anything over the player, and separating the audio. At most it could be a free discovery tier with captions beside the player.
 2. **Creative Commons works only for CC BY and CC BY-SA**, plus Taiwan's open government data licence. NC rules out a paid app and ND rules out translation. The pool of usable Mandarin video is small, and files must come from the creator, not be downloaded from YouTube.
-3. **The main public-domain pool is the Voice of America Mandarin archive**, as US government work, once segments with wire-agency footage are screened out. Old Chinese films are mostly still protected in the US.
+3. **The main public-domain pool is the Voice of America Mandarin archive**, as US government work, once segments with wire-agency footage are screened out. Old Chinese films are mostly still protected in the US (an inference; see section 2).
 4. **Licensing from creators or distributors is the route to a real catalogue.** Lingopie and Viki both license. The licence must grant subtitles and translations, AI processing, connected-TV streaming, the territory and marketing use. No prices are public, so this needs quotes.
 5. **Original or commissioned content costs the most up front but gives full control.** It needs work-for-hire or assignment contracts and releases from everyone on camera.
 6. **Recommendation:** launch with commissioned creator videos plus vetted CC BY and public-domain filler, add distributor licences once there is revenue, and keep a rights register with proof for every video.
@@ -19,13 +19,13 @@ Sources read on 2026-10-21. Every claim links to the page it came from; "not che
 | CC BY, CC BY-SA, Taiwan OGDL | None (attribution) | Yes | Yes | Starter or filler catalogue. Sparse, and each file has to be checked |
 | CC NC or ND (for example TED) | None, for non-commercial use only | ND: no. NC: not in a paid app | No | Not usable without a separate paid licence |
 | YouTube embed (IFrame player in a WebView) | None | Only beside the player, never over it; audio for Gemini is barred | No | Breaks the overlaid captions and the paywall |
-| Licence from creators or distributors | Negotiated; not public | Only if the licence grants it | Yes, if subscription or ad-supported rights are granted | Best route to a real catalogue |
+| Licence from creators or distributors | Negotiated (flat fee, or minimum guarantee plus revenue share); no prices public | Only if the licence grants it | Yes, if subscription or ad-supported rights are granted | Best route to a real catalogue |
 | Original or commissioned | Highest up front (production) | Yes | Yes | Full control |
 
 ## CaptLearn today
 
 - **Video:** one demo video. `src/config.ts` sets `DEMO_VIDEO_ID = 'test1_compat'`, and the player streams it from `${BACKEND_URL}/media/<id>.mp4` (`src/screens/PlayerScreen.tsx`). The backend serves `backend/media/` with `express.static` (`backend/server.js`), and that folder is git-ignored.
-- **Captions:** the backend extracts the audio with ffmpeg, uploads it to Gemini, and gets back Mandarin cues with an English translation per cue (`backend/gemini.js`). It caches the cues in `backend/cache/`.
+- **Captions:** the backend extracts the audio with ffmpeg and caches the resulting cues in `backend/cache/` (`backend/server.js`). In between, it uploads the audio to Gemini and gets back Mandarin cues with a translation per cue, English by default (`backend/gemini.js`).
 - **Display:** `CaptionOverlay` draws both lines over the video surface. Learnt words are blanked from the English line, with their Chinese shown beneath (`src/components/CaptionOverlay.tsx`).
 
 So every video in a public catalogue gets copied to a server, streamed, sent to an AI service, translated, and shown with captions drawn over the picture.
@@ -34,7 +34,7 @@ So every video in a public catalogue gets copied to a server, streamed, sent to 
 
 Each step is a separate act that the rights holder controls, so a source has to permit all of them:
 
-1. **Copy and host** the file (CDN, transcoding): the reproduction right.
+1. **Copy and host** the file (content delivery network, transcoding): the reproduction right.
 2. **Stream it to paying users** on Fire TV: the distribution, public performance or "making available" right, for a given territory and platform (subscription or ad-supported, on connected TV).
 3. **Send the audio to Gemini** for transcription: another reproduction. Some licences now ban AI processing outright (TED's does; see section 3).
 4. **Show Mandarin captions and an English translation** in sync with the picture.
@@ -74,8 +74,8 @@ A same-language Mandarin transcript is arguably less than an adaptation, but the
 
 - **PRC term:** rights in an audiovisual work last 50 years, "expiring on December 31" of the fiftieth year after first publication (Copyright Law of the PRC as amended in 2020, Art. 23, [text](https://subsites.chinadaily.com.cn/npc/2020-11/11/c_674691_2.htm)).
 - **US term:** works published before 1978 get 95 years. Works from 1930 entered the US public domain on 1 January 2026 ([Duke Center for the Study of the Public Domain, Public Domain Day 2026](https://cspd.law.duke.edu//publicdomainday/2026/)).
-- **Copyright restoration:** under [17 U.S.C. § 104A](https://www.law.cornell.edu/uscode/text/17/104A), US copyright "vests automatically" in foreign works that had fallen into the US public domain only for failing US formalities, unless their term had already expired in the source country. So a Chinese film still protected in China when restoration took effect (1996) can be protected in the US for 95 years.
-- **Result:** the only Mandarin films safely in the public domain in both the US and the PRC are roughly those from the 1930s to the mid-1940s. Many are silent or have poor audio and dated speech, so they make weak teaching material. Underlying scripts and music can have separate, longer terms (life plus 50 years in the PRC).
+- **Copyright restoration:** under [17 U.S.C. § 104A](https://www.law.cornell.edu/uscode/text/17/104A), US copyright "vests automatically" in foreign works that had fallen into the US public domain only for failing US formalities or lacking US national eligibility (§104A(h)(6)(C)), unless their term had already expired in the source country. So a Chinese film still protected in China when restoration took effect (1996) can be protected in the US for 95 years.
+- **Result:** the only Mandarin films safely in the public domain in both the US and the PRC are roughly those from the 1930s to the mid-1940s. This is an inference from the three rules above; no source states it. Many are silent or have poor audio and dated speech, so they make weak teaching material. Underlying scripts and music can have separate, longer terms (life plus 50 years in the PRC).
 - **Cost:** no licence fee, but rights research per title is expensive. **[Lawyer]** per title. Not recommended as a main source.
 
 ## 3. Creative Commons and open government licences
@@ -87,7 +87,7 @@ A same-language Mandarin transcript is arguably less than an adaptation, but the
   - **Usable** commercially with captions and translations. Add a credit on screen or on the detail page, plus a line such as "Mandarin captions and English translation added by CaptLearn".
 - **CC BY-SA:** the same, but the adapted version (the captioned video, and arguably the caption track) must be shared under BY-SA. **[Lawyer]** whether that forces CaptLearn to release its Gemini caption tracks under BY-SA. That may be acceptable.
 - **CC BY-ND:** the user may "produce and reproduce, but not Share, Adapted Material" ([CC BY-ND 4.0 legal code](https://creativecommons.org/licenses/by-nd/4.0/legalcode.en), §2(a)(1)(B)). Transcoding is allowed, because "technical modifications" never produce Adapted Material (§2(a)(4)). A translated subtitle track shown with the video is very likely an adaptation. **Not usable.**
-- **NC (NonCommercial):** use "not primarily intended for or directed toward commercial advantage or monetary compensation" ([CC FAQ](https://creativecommons.org/faq/)). A paid app fails this. **Not usable** without a separate licence.
+- **NC (NonCommercial):** use "not primarily intended for or directed towards commercial advantage or monetary compensation" ([CC BY-NC 4.0 legal code](https://creativecommons.org/licenses/by-nc/4.0/legalcode.en), §1(i)). A paid app fails this. **Not usable** without a separate licence.
 
 **Example: TED.** TED talks are CC BY-NC-ND. TED's policy says commercial use includes ad-supported use. It prohibits "adding to" the content, allows translation only through TED's own translator programme, and prohibits putting TED content into "artificial intelligence or machine learning workflows" without a separate written licence ([TED Talks Usage Policy](https://www.ted.com/about/our-organization/our-policies-terms/ted-talks-usage-policy); [TED Terms of Use](https://www.ted.com/about/our-organization/our-policies-terms/ted-com-terms-of-use)). TED sells commercial licences ([How do I license TED content?](https://help.ted.com/hc/en-us/articles/360004233294-How-do-I-license-TED-or-TEDx-content)), so it belongs under licensing (section 5), not here.
 
@@ -108,7 +108,7 @@ A same-language Mandarin transcript is arguably less than an adaptation, but the
 
 ## 4. Platform APIs: YouTube embedding
 
-It is technically possible on Vega. Vega's WebView runs on Chromium and talks to the React Native app through a messaging bridge ([Vega WebView overview](https://developer.amazon.com/docs/vega/0.24/overview-of-webview.html)). YouTube requires embedded players to use OS-provided WebViews and to send an HTTP Referer ([YouTube Required Minimum Functionality](https://developers.google.com/youtube/terms/required-minimum-functionality)). But YouTube's policies conflict with how CaptLearn works:
+It is technically possible on Vega. Vega's WebView runs on Chromium and talks to the React Native app through a messaging bridge ([Vega WebView overview](https://developer.amazon.com/docs/vega/0.24/overview-of-webview.html)). YouTube requires embedded players in apps to use OS-provided WebViews and to identify the app, normally through the HTTP Referer header ([YouTube Required Minimum Functionality](https://developers.google.com/youtube/terms/required-minimum-functionality)). But YouTube's policies conflict with how CaptLearn works:
 
 | CaptLearn needs | YouTube rule | Source |
 |---|---|---|
@@ -145,7 +145,7 @@ It is technically possible on Vega. Vega's WebView runs on Chromium and talks to
   - Whether Easy Languages licenses to other third-party apps was not found. Ask them.
 - **PTS, Taiwan's public broadcaster**, runs an international channel of Mandarin and Taiwanese content with English subtitles ([Taiwan News](https://www.taiwannews.com.tw/zh/news/4305808); [PTS](https://www.pts.org.tw/)). No public licensing catalogue was found. Contact them directly.
 - **TED**, for a commercial licence of Mandarin-language TEDx talks ([TED licensing](https://help.ted.com/hc/en-us/articles/360004233294-How-do-I-license-TED-or-TEDx-content)). Note the AI-workflow clause (section 3).
-- **PRC and Taiwan drama distributors and sales agents**, met through markets such as MIPCOM and ATF. Back-catalogue titles cost less. Pricing was not found; deals are confidential.
+- **PRC and Taiwan drama distributors and sales agents**, met through TV content markets such as MIPCOM (Cannes) and ATF (Asia TV Forum & Market, Singapore). Back-catalogue titles cost less. Pricing was not found; deals are confidential.
 
 ### Licence checklist for the lawyer
 
@@ -153,7 +153,7 @@ It is technically possible on Vega. Vega's WebView runs on Chromium and talks to
 - Platform and media: subscription and/or ad-supported streaming on connected-TV apps, naming Fire TV and the Amazon Appstore.
 - **An express right to create, show and modify Mandarin and English subtitles and translations**, including interactive or partly blanked captions, and who owns the subtitle files CaptLearn creates.
 - **Express permission for automated and AI processing** (Gemini transcription and translation), and that the licensor's content is not used to train models beyond what Gemini's terms allow.
-- Hosting, transcoding and CDN rights; DRM requirements; offline download (yes or no).
+- Hosting, transcoding and content delivery network rights; DRM requirements; offline download (yes or no).
 - Music and other third-party clearances. Music in TV shows is often cleared only for the original broadcast. **[Lawyer]**
 - Marketing rights: clips, stills, titles and key art in the Appstore listing.
 - Fees: flat fee, minimum guarantee plus revenue share, or per view. Reporting and audit duties.
@@ -171,7 +171,7 @@ It is technically possible on Vega. Vega's WebView runs on Chromium and talks to
   - licensed or original music
 
   **[Lawyer]** Work-for-hire rules differ for contractors in the PRC and Taiwan. Use assignment clauses under a chosen governing law.
-- **Captions and translations:** no restriction. CaptLearn can also get clean audio and scripts, which should improve Gemini's caption accuracy, and can grade the language by HSK level.
+- **Captions and translations:** no restriction. CaptLearn can also ask for clean audio and scripts, which should improve Gemini's caption accuracy, and can grade the language by HSK level.
 - **Cost:** the highest up front of all the options (crew, talent, editing), and it scales with ambition. Commissioning short graded videos from Mandarin creators who already have cameras and studios should cost far less than producing drama. No figures were found; get quotes from 3 to 5 creators.
 - **Upside:** a catalogue no one can pull, no revenue share, and full freedom with features such as blanking, slow-down and re-dubbing.
 
@@ -188,4 +188,4 @@ It is technically possible on Vega. Vega's WebView runs on Chromium and talks to
 - **VOA Mandarin:** its current operating status, and whether its output since 2025 is still the work of federal employees.
 - **Prices:** actual licence prices from creators, PTS, TED and drama distributors. None are public.
 - **CC BY volume:** whether any Mandarin CC BY catalogue big enough to matter exists. Searches during this research found only scattered files.
-- **YouTube approval:** whether YouTube would give a paid learning app written approval under III.E.1.a or III.G.1.c. That seems unlikely and would need direct contact with YouTube.
+- **YouTube approval:** whether YouTube would give a paid learning app written approval to store copies (III.E.1.a). Not asked; it would need direct contact with YouTube.
