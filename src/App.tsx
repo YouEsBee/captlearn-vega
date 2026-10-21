@@ -15,8 +15,9 @@ import {newWordCount, nextVideo} from './catalogue/catalogue';
 import {MasteryMap} from './learning/mastery';
 import {indexLexicon, wordIdsInCues} from './learning/substitute';
 import {QuizAnswer} from './learning/summary';
-import {Cue, Lang, Settings} from './learning/types';
-import {sampleLexicon} from './data/sampleLexicon';
+import {Cue, Lang, LexiconEntry, Settings} from './learning/types';
+import {mergeLexicons} from './lexicon/lexicon';
+import {loadLexicon} from './lexicon/lexiconSource';
 import {LANGUAGES, languageLabel} from './data/languages';
 import {CATALOGUE} from './data/catalogue';
 import {defaultSettings} from './storage/progress';
@@ -46,17 +47,24 @@ export const App = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   // The video picked on the home screen, or by "Watch next".
   const [videoId, setVideoId] = useState<string>(CATALOGUE[0].id);
-  // Every catalogue video's captions are loaded up front: the quiz covers the words in the video,
-  // and each home screen card counts its new words.
+  // Every catalogue video's captions and lexicon are loaded up front: the quiz covers the words
+  // in the video, and each home screen card counts its new words.
   const [cuesByVideo, setCuesByVideo] = useState<Record<string, Cue[]>>({});
+  const [lexiconByVideo, setLexiconByVideo] = useState<Record<string, LexiconEntry[]>>({});
 
   useEffect(() => {
     loadState().then(loaded => {
       setState(loaded);
       setScreen(loaded.users.length === 0 ? 'onboarding' : 'choose');
     });
+    // The backend makes a video's lexicon with its captions, so it is fetched after them.
+    // Both are set together, so the quiz never opens on captions without their words.
     CATALOGUE.forEach(v =>
-      loadCaptions(v.id).then(cues => setCuesByVideo(prev => ({...prev, [v.id]: cues}))),
+      loadCaptions(v.id).then(async cues => {
+        const entries = await loadLexicon(v.id);
+        setCuesByVideo(prev => ({...prev, [v.id]: cues}));
+        setLexiconByVideo(prev => ({...prev, [v.id]: entries}));
+      }),
     );
   }, []);
 
@@ -69,7 +77,11 @@ export const App = () => {
     });
 
   const user: User | undefined = state.users.find(u => u.id === state.currentUserId);
-  const lexicon = useMemo(() => sampleLexicon, []);
+  // Every video's words, so the quiz can bring back due words from earlier videos.
+  const lexicon = useMemo(
+    () => mergeLexicons(CATALOGUE.map(v => lexiconByVideo[v.id] ?? [])),
+    [lexiconByVideo],
+  );
   const targetLang: Lang = user?.targetLang ?? 'zh';
   const settings: Settings = {...defaultSettings, targetLang};
   const mastery: MasteryMap = user?.mastery ?? {};

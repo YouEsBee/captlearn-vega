@@ -22,9 +22,10 @@ const EMPTY: AppState = {users: [], currentUserId: null};
 
 /**
  * Bumped when the shape of saved progress changes. Older progress is cleared, not migrated:
- * version 2 replaced score-based mastery with the learnt flag and review schedule.
+ * version 2 replaced score-based mastery with the learnt flag and review schedule;
+ * version 3 changed word ids to zh-<simplified> for the generated lexicons.
  */
-const PROGRESS_VERSION = 2;
+const PROGRESS_VERSION = 3;
 
 interface StoredState extends AppState {
   progressVersion?: number;

@@ -16,6 +16,10 @@ The user will first complete a quiz and thereafter watch a video with the Englis
 - Install Vega Studio plugin.
 - Change directory into backend and install all node packages with ```npm i```
 - Put each catalogue video from `src/data/catalogue.ts` in `backend/media` as `<id>.mp4`, with its thumbnail as `<id>.jpg`.
+- Put the dictionaries that each video's lexicon (its teachable words) is made from in `backend/data`:
+    - `cedict_ts.u8`: CC-CEDICT, unzipped from https://www.mdbg.net/chinese/dictionary?page=cc-cedict
+    - `hsk.tsv`: the HSK 3.0 word list, one `word<TAB>level` line per word (levels 7 to 9 can be written as 7)
+- A video's lexicon is made with its captions and saved as `backend/cache/<id>.lexicon.json`. Skim each one and fix any bad gloss in that file by hand. `npm run lexicon -- <id>` in `backend` remakes one from its captions and prints it (this overwrites hand fixes).
 - Run the backend via command line with
 ```
 GEMINI_API_KEY=YOUR_API_KEY GEMINI_MODEL=YOUR_GEMINI_MODEL node server.js

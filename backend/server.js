@@ -1,4 +1,5 @@
-// Backend for CaptLearn. Extracts audio from a video, runs Gemini, caches cues.
+// Backend for CaptLearn. Extracts audio from a video, runs Gemini, caches cues,
+// and makes each video's lexicon from its captions.
 // Run: GEMINI_API_KEY=... GEMINI_MODEL=... node server.js
 const express = require('express');
 const fs = require('fs');
@@ -6,6 +7,14 @@ const path = require('path');
 const {execFile} = require('child_process');
 const {promisify} = require('util');
 const {transcribeAndTranslate} = require('./gemini');
+const {
+  CACHE_DIR,
+  safeId,
+  cachePath,
+  lexiconPath,
+  saveLexicon,
+  saveLexiconFromCaptions,
+} = require('./cache');
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -14,7 +23,6 @@ app.use(express.json());
 // express.static supports Range requests, which video playback needs.
 app.use('/media', express.static(path.join(__dirname, 'media')));
 
-const CACHE_DIR = path.join(__dirname, 'cache');
 const MEDIA_DIR = path.join(__dirname, 'media'); // put test videos here
 fs.mkdirSync(CACHE_DIR, {recursive: true});
 
@@ -25,15 +33,6 @@ const LANGS = {
   zh: 'Mandarin Chinese',
   en: 'English',
 };
-
-/** Only allow simple IDs so a request can't read arbitrary paths. */
-function safeId(id) {
-  return /^[A-Za-z0-9_-]{1,64}$/.test(id);
-}
-
-function cachePath(id, targetLang) {
-  return path.join(CACHE_DIR, `${id}.${targetLang}.json`);
-}
 
 async function extractAudio(videoPath, outPath) {
   // Mono 16 kHz MP3 keeps uploads small and is enough for speech.
@@ -76,6 +75,15 @@ app.post('/videos/:id/captions', (req, res) => {
         LANGS[source],
         LANGS[native],
       );
+      if (source === 'zh') {
+        // Made alongside the captions. A failure here still keeps the captions:
+        // GET /videos/:id/lexicon tries again.
+        try {
+          saveLexicon(id, cues);
+        } catch (err) {
+          console.error(`lexicon for ${id} failed:`, err);
+        }
+      }
       fs.writeFileSync(cachePath(id, source), JSON.stringify(cues, null, 2));
       jobs.set(id, {state: 'done'});
     } catch (err) {
@@ -101,6 +109,28 @@ app.get('/videos/:id/captions', (req, res) => {
   }
   const job = jobs.get(id) || {state: 'none'};
   res.status(job.state === 'error' ? 500 : 202).json(job);
+});
+
+// GET /videos/:id/lexicon
+// The video's teachable words. Made from its cached Mandarin captions if it is missing,
+// for captions cached before lexicons existed.
+app.get('/videos/:id/lexicon', (req, res) => {
+  const {id} = req.params;
+  if (!safeId(id)) {
+    return res.status(400).json({error: 'bad id'});
+  }
+  if (!fs.existsSync(lexiconPath(id))) {
+    if (!fs.existsSync(cachePath(id, 'zh'))) {
+      return res.status(404).json({error: 'no captions yet'});
+    }
+    try {
+      saveLexiconFromCaptions(id);
+    } catch (err) {
+      console.error(`lexicon for ${id} failed:`, err);
+      return res.status(500).json({error: String(err.message || err)});
+    }
+  }
+  res.json(JSON.parse(fs.readFileSync(lexiconPath(id), 'utf8')));
 });
 
 const port = process.env.PORT || 8080;

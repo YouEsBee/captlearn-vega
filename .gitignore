@@ -24,6 +24,9 @@ coverage/
 backend/media/
 backend/cache/
 
+# Dictionary sources for lexicons (CC-CEDICT and the HSK list), downloaded separately
+backend/data/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

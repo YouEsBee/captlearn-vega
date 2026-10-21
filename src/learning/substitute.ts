@@ -2,7 +2,7 @@ import {pinyin} from 'pinyin-pro';
 import {LexiconEntry, Lang, NativeSegment, Segment} from './types';
 import {MasteryMap, isLearnt} from './mastery';
 
-const MAX_PHRASE_LENGTH = 4; // Chinese words are up to ~4 characters here
+const MAX_PHRASE_LENGTH = 8; // generated lexicons can hold CC-CEDICT words longer than 4 characters
 const CHINESE = /[一-鿿]/;
 
 /** Index lexicon entries by target language word for fast lookup. */

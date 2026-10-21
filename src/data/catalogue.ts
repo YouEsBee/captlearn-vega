@@ -24,11 +24,3 @@ export function videoUrl(id: string): string {
 export function thumbnailUrl(id: string): string {
   return `${BACKEND_URL}/media/${id}.jpg`;
 }
-
-/** Sources to credit on the credits screen. */
-export const CREDITS: {source: string; detail: string}[] = [
-  {
-    source: 'Voice of America (VOA)',
-    detail: 'Videos courtesy of Voice of America, voanews.com. Public domain.',
-  },
-];
