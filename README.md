@@ -68,11 +68,13 @@ cloudflared tunnel --url http://localhost:8080
 Copy the url it prints, e.g. `https://funky-but-interesting-name.trycloudflare.com`. Leave this command line running too. A quick tunnel's url changes every time you start it; a named Cloudflare tunnel keeps it the same.
 
 ### 3. Point the app at the backend
-The backend address is written into the app when it is built. Copy `.env.example` to `.env` in the project root and set `BACKEND_URL` to the tunnel url:
+The backend address is written into the app when it is built. By default it is the team's shared tunnel url, `SHARED_BACKEND_URL` in `backendUrl.js`. Whoever runs the tunnel updates it there and commits it whenever the url changes; everyone else pulls and builds again.
+
+To use your own backend instead, copy `.env.example` to `.env` in the project root and set `BACKEND_URL` to your tunnel url:
 ```
 BACKEND_URL=https://funky-but-interesting-name.trycloudflare.com
 ```
-(Setting `BACKEND_URL` in the environment also works, and wins over `.env`.) Build the app again whenever the url changes.
+(Setting `BACKEND_URL` in the environment also works, and wins over `.env`; both win over the shared default.) Build the app again whenever the url changes.
 
 ### 4. Launch the app
 In Vega Studio, build the app with the wrench button, then press the play button to launch it in the emulator. If the app can't reach the backend, it shows an error screen with a Try again button: check that both command lines are still running and that `BACKEND_URL` matches the current tunnel url.

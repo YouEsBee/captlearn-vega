@@ -13,6 +13,14 @@ describe('the backend address the app is built with', () => {
     expect(backendUrl({}, dotenv)).toBe('http://192.168.1.10:8080');
   });
 
+  it('otherwise comes from the shared default', () => {
+    const shared = 'https://shared.example.com/';
+    expect(backendUrl({}, '', shared)).toBe('https://shared.example.com');
+    expect(backendUrl({}, 'BACKEND_URL=https://mine.example.com', shared)).toBe(
+      'https://mine.example.com',
+    );
+  });
+
   it('loses a trailing slash, so paths join on cleanly', () => {
     expect(backendUrl({BACKEND_URL: 'https://captlearn.example.com/ '}, '')).toBe(
       'https://captlearn.example.com',

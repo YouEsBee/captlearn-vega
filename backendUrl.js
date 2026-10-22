@@ -1,10 +1,15 @@
 // The backend address the app is built with. babel.config.js writes it into src/config.ts
-// at build time, from BACKEND_URL in the environment or else in a .env file here.
+// at build time, from BACKEND_URL in the environment, else in a .env file here, else the
+// shared default below.
 const fs = require('fs');
 const path = require('path');
 
-/** BACKEND_URL from `env`, or else from the .env file's text, with no trailing slash. Empty if unset. */
-function backendUrl(env, dotenv) {
+// The team's current tunnel url, so a fresh clone builds without a .env. Update and commit it
+// whenever the tunnel restarts with a new url.
+const SHARED_BACKEND_URL = 'https://ampland-executives-bali-ccd.trycloudflare.com';
+
+/** BACKEND_URL from `env`, or else from the .env file's text, or else `shared`, with no trailing slash. Empty if none. */
+function backendUrl(env, dotenv, shared = '') {
   let url = (env.BACKEND_URL || '').trim();
   if (!url) {
     for (const line of dotenv.split(/\r?\n/)) {
@@ -14,13 +19,20 @@ function backendUrl(env, dotenv) {
       }
     }
   }
+  if (!url.trim()) {
+    url = shared;
+  }
   return url.trim().replace(/\/+$/, '');
 }
 
-/** The address for this build, read from the environment and the project's .env file. */
+/** The address for this build, read from the environment, the project's .env file and the shared default. */
 function readBackendUrl() {
   const file = path.join(__dirname, '.env');
-  return backendUrl(process.env, fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '');
+  return backendUrl(
+    process.env,
+    fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '',
+    SHARED_BACKEND_URL,
+  );
 }
 
 module.exports = {backendUrl, readBackendUrl};
