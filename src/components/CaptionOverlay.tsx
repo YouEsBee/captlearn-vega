@@ -50,63 +50,72 @@ export const CaptionOverlay = ({nativeSegments, targetSegments}: Props) => (
   </View>
 );
 
+// The box is anchored to the bottom and grows upward, so it never clips its own lines.
+// Tight line heights keep the stacked lines compact.
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     left: 64,
     right: 64,
-    bottom: 80,
+    bottom: 48,
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 8,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  // Words wrap as a row of columns, so each Chinese word stays directly under its underscores.
+  // English line, with learnt words as underscores.
   nativeLine: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   nativeWord: {
     alignItems: 'center',
-    marginHorizontal: 6,
+    marginHorizontal: 4,
   },
   native: {
     color: '#DDDDDD',
-    fontSize: 28,
+    fontSize: 22,
+    lineHeight: 28,
   },
   nativeBlank: {
     color: '#DDDDDD',
-    fontSize: 28,
+    fontSize: 22,
+    lineHeight: 28,
   },
   nativeZh: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 18,
+    lineHeight: 22,
   },
+  // Chinese line: each word is a column, with pinyin under it.
   target: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
-  // Each word is a column: characters on top, pinyin underneath, gloss below that.
   word: {
     alignItems: 'center',
-    marginHorizontal: 4,
+    marginHorizontal: 3,
   },
   chars: {
     color: '#FFFFFF',
-    fontSize: 40,
+    fontSize: 30,
+    lineHeight: 36,
   },
   glossed: {
     textDecorationLine: 'underline',
   },
   pinyin: {
     color: '#FFD966',
-    fontSize: 22,
+    fontSize: 17,
+    lineHeight: 21,
   },
   gloss: {
     color: '#DDDDDD',
-    fontSize: 20,
+    fontSize: 16,
+    lineHeight: 20,
   },
 });

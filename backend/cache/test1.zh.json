@@ -1,0 +1,38 @@
+[
+  {
+    "start": 0.5,
+    "end": 4.1,
+    "text": "在深邃的大海之下，",
+    "native": "Beneath the deep ocean,"
+  },
+  {
+    "start": 4.1,
+    "end": 9.9,
+    "text": "隐藏着一个我们从未完全探索过的世界。",
+    "native": "lies a world we have never fully explored."
+  },
+  {
+    "start": 10.9,
+    "end": 16.7,
+    "text": "这里的生物进化出了独特的生存机制，",
+    "native": "Creatures here have evolved unique survival mechanisms,"
+  },
+  {
+    "start": 16.7,
+    "end": 24.3,
+    "text": "能够在极高的压力和完全黑暗的环境中繁衍生息。",
+    "native": "capable of thriving under extreme pressure and in complete darkness."
+  },
+  {
+    "start": 24.9,
+    "end": 31.4,
+    "text": "每个微小的生命都在这片寂静的深渊里，",
+    "native": "Every tiny life in this silent abyss,"
+  },
+  {
+    "start": 31.4,
+    "end": 37.3,
+    "text": "书写着关于生存与进化的史诗。",
+    "native": "is writing an epic of survival and evolution."
+  }
+]
