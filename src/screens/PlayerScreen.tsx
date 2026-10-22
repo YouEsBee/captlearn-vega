@@ -1,15 +1,36 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
-import {useKeplerAppStateManager} from '@amazon-devices/react-native-kepler';
+import {Image, Platform, StyleSheet, Text, View} from 'react-native';
+import {
+  useKeplerAppStateManager,
+  useTVEventHandler,
+} from '@amazon-devices/react-native-kepler';
 import {
   KeplerVideoSurfaceView,
   VideoPlayer,
 } from '@amazon-devices/react-native-w3cmedia';
 import {AppOverrideMediaControlHandler} from '../utils/AppOverrideMediaControlHandler';
 import {CaptionOverlay} from '../components/CaptionOverlay';
+import {BarTarget, Timeline} from '../components/Timeline';
+
+// Remote key actions and tuning for the D-pad controls.
+const KEY_DOWN = 0;
+const KEY_UP = 1;
+const SKIP_SECONDS = 10;
+const SCRUB_STEP_SECONDS = 5;
+const SCRUB_DELAY_MS = 400;
+const SCRUB_INTERVAL_MS = 200;
+
+// video: no controls. bar: progress bar shown. buttons: top Play/Finish/Back focused.
+type Zone = 'video' | 'controls';
+interface Hold {
+  dir: number;
+  delay?: ReturnType<typeof setTimeout>;
+  repeat?: ReturnType<typeof setInterval>;
+}
 import {FocusButton} from '../components/FocusButton';
 import {Spinner} from '../components/Spinner';
 import {activeCue} from '../captions/captions';
+import {splitCues} from '../captions/splitCues';
 import {
   applyGlosses,
   splitNativeLine,
@@ -59,6 +80,19 @@ export const PlayerScreen = ({
   const keplerAppStateManager = useKeplerAppStateManager();
   const componentInstance = keplerAppStateManager.getComponentInstance();
   const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const durationRef = useRef(0);
+  durationRef.current = duration;
+  const [zone, setZone] = useState<Zone>('video');
+  const zoneRef = useRef<Zone>('video');
+  // True while the progress track is entered: left and right move the video.
+  const [scrubbing, setScrubbing] = useState(false);
+  const scrubRef = useRef(false);
+  // Which bar element has focus, and a counter that remounts the bar to focus it.
+  const [barTarget, setBarTarget] = useState<BarTarget>('track');
+  const barTargetRef = useRef<BarTarget>('track');
+  const [barNonce, setBarNonce] = useState(0);
+  const holdRef = useRef<Hold | null>(null);
   const [playing, setPlaying] = useState(false);
   // The thumbnail and a spinner cover the screen until playback first starts.
   const [started, setStarted] = useState(false);
@@ -68,8 +102,13 @@ export const PlayerScreen = ({
   const [mediaLoaded, setMediaLoaded] = useState(false);
 
   // The effect below is set up once per video, so it reads the latest values through refs.
+  // Long lines are split into shorter timed pieces, so the captions can use a larger font.
+  const captionCues = useMemo(
+    () => splitCues(cues, settings.targetLang, index),
+    [cues, settings.targetLang, index],
+  );
   const cuesRef = useRef<Cue[]>([]);
-  cuesRef.current = cues;
+  cuesRef.current = captionCues;
   const finishRef = useRef<() => void>(() => {});
 
   const finish = () => {
@@ -85,6 +124,7 @@ export const PlayerScreen = ({
     const onEnded = () => finishRef.current();
     const onLoadedMetadata = () => {
       addStatus('media loaded');
+      setDuration(player.duration || 0);
       setMediaLoaded(true);
     };
     // Same error fields the official sample reads (mediaControlStateUtil.mError).
@@ -105,7 +145,11 @@ export const PlayerScreen = ({
     player.addEventListener('loadedmetadata', onLoadedMetadata);
     player.addEventListener('error', onError);
     // Some players don't fire timeupdate reliably, so also poll the position.
-    const poll = setInterval(() => setTime(player.currentTime), 250);
+    const poll = setInterval(() => {
+      setTime(player.currentTime);
+      // Duration can arrive after the first metadata event, so keep checking until known.
+      setDuration(d => d || player.duration || 0);
+    }, 250);
 
     // Attach to the app's media controls first, as the official sample does.
     const attachControls = async () => {
@@ -175,7 +219,122 @@ export const PlayerScreen = ({
     }
   };
 
-  const cue = activeCue(cues, time);
+  const cue = activeCue(captionCues, time);
+
+  // Seeks by a number of seconds, clamped to the start and end of the video.
+  const seekBy = (seconds: number) => {
+    const player = video.current as any;
+    const limit = durationRef.current > 0 ? durationRef.current : Infinity;
+    const target = Math.max(0, Math.min(limit, (player.currentTime ?? 0) + seconds));
+    player.currentTime = target;
+    setTime(target);
+  };
+
+  // Holding left or right: one skip on press, then steady scrubbing after a short delay.
+  const stopSeek = () => {
+    const hold = holdRef.current;
+    if (!hold) {
+      return;
+    }
+    clearTimeout(hold.delay);
+    clearInterval(hold.repeat);
+    holdRef.current = null;
+  };
+
+  const startSeek = (dir: number) => {
+    // Auto-repeat key-downs from a held button are ignored; the timers handle them.
+    if (holdRef.current?.dir === dir) {
+      return;
+    }
+    stopSeek();
+    seekBy(dir * SKIP_SECONDS);
+    const hold: Hold = {dir};
+    hold.delay = setTimeout(() => {
+      hold.repeat = setInterval(
+        () => seekBy(dir * SCRUB_STEP_SECONDS),
+        SCRUB_INTERVAL_MS,
+      );
+    }, SCRUB_DELAY_MS);
+    holdRef.current = hold;
+  };
+
+  const moveZone = (next: Zone) => {
+    zoneRef.current = next;
+    setZone(next);
+  };
+
+  const focusBar = (target: BarTarget) => {
+    barTargetRef.current = target;
+    setBarTarget(target);
+    setBarNonce(n => n + 1);
+  };
+
+  const setScrub = (on: boolean) => {
+    scrubRef.current = on;
+    setScrubbing(on);
+    if (!on) {
+      stopSeek();
+    }
+  };
+
+  // Moves focus along the bar: Back, Play/Pause, progress track, Skip.
+  const moveFocus = (dir: number) => {
+    const order: BarTarget[] = ['back', 'play', 'track', 'skip'];
+    const i = order.indexOf(barTargetRef.current);
+    focusBar(order[Math.max(0, Math.min(order.length - 1, i + dir))]);
+  };
+
+  // D-pad: up shows the controls and focuses the track. Left and right move between the bar's
+  // elements, except once the track is entered (OK): then they seek. Only OK leaves seek mode.
+  useTVEventHandler((evt: any) => {
+    if (!Platform.isTV || !evt) {
+      return;
+    }
+    if (evt.eventKeyAction === KEY_UP) {
+      if (evt.eventType === 'left' || evt.eventType === 'right') {
+        stopSeek();
+      }
+      return;
+    }
+    if (evt.eventKeyAction !== KEY_DOWN) {
+      return;
+    }
+    const current = zoneRef.current;
+    switch (evt.eventType) {
+      case 'up':
+        if (current === 'video') {
+          moveZone('controls');
+          focusBar('track');
+        }
+        break;
+      case 'down':
+        // While seeking, only OK leaves seek mode, so down does nothing then.
+        if (current === 'controls' && !scrubRef.current) {
+          moveZone('video');
+        }
+        break;
+      case 'left':
+      case 'right': {
+        if (current !== 'controls') {
+          break;
+        }
+        const dir = evt.eventType === 'left' ? -1 : 1;
+        if (scrubRef.current) {
+          startSeek(dir);
+        } else {
+          moveFocus(dir);
+        }
+        break;
+      }
+    }
+  });
+
+  useEffect(
+    () => () => {
+      stopSeek();
+    },
+    [],
+  );
 
   // English line: learnt words become underscores, with their Chinese directly beneath.
   const nativeSegments = useMemo(() => {
@@ -228,6 +387,28 @@ export const PlayerScreen = ({
         />
       ) : null}
 
+      {started && mediaLoaded && zone === 'controls' && (
+        <Timeline
+          time={time}
+          duration={duration}
+          playing={playing}
+          target={barTarget}
+          nonce={barNonce}
+          scrubbing={scrubbing}
+          onFocusTarget={t => {
+            barTargetRef.current = t;
+            setBarTarget(t);
+          }}
+          onBack={() => {
+            video.current.pause();
+            onExit();
+          }}
+          onTogglePlay={togglePlay}
+          onToggleScrub={() => setScrub(!scrubRef.current)}
+          onSkip={() => finishRef.current()}
+        />
+      )}
+
       {/* To debug for video playing errors */}
       {/* <View style={styles.debug} pointerEvents="none">
         {status.map((line, i) => (
@@ -238,21 +419,6 @@ export const PlayerScreen = ({
         <Text style={styles.debugText}>time: {time.toFixed(1)}s</Text>
       </View> */}
 
-      <View style={styles.controls}>
-        <FocusButton
-          label={playing ? 'Pause' : 'Play'}
-          onPress={togglePlay}
-          hasTVPreferredFocus
-        />
-        <FocusButton label="Finish" onPress={() => finishRef.current()} />
-        <FocusButton
-          label="Back"
-          onPress={() => {
-            video.current.pause();
-            onExit();
-          }}
-        />
-      </View>
     </View>
   );
 };

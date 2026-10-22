@@ -1,6 +1,7 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {NativeSegment, Segment} from '../learning/types';
+import {FitToWidth} from './FitToWidth';
 
 interface Props {
   /** English line, shown on top. Learnt words are underscores with their Chinese beneath. */
@@ -21,32 +22,71 @@ function nativeColumns(segments: NativeSegment[]): {top: string; zh?: string}[] 
   );
 }
 
+const CJK = /[\u3000-\u9fff\uff00-\uffef]/;
+
+/** Rough rendered width of a string: a CJK character is about one em, a Latin one about half. */
+function estimateWidth(text: string, size: number): number {
+  let width = 0;
+  for (const ch of text) {
+    width += CJK.test(ch) ? size * 1.05 : size * 0.55;
+  }
+  return width;
+}
+
+/** Estimated width of the English line at its font sizes (30px English, 22px Chinese). */
+function nativeLineWidth(segments: NativeSegment[]): number {
+  return nativeColumns(segments).reduce(
+    (sum, col) =>
+      sum + Math.max(estimateWidth(col.top, 30), col.zh ? estimateWidth(col.zh, 22) : 0) + 8,
+    0,
+  );
+}
+
+/** Estimated width of the Chinese line at its font sizes (40px characters, 24px pinyin, 20px gloss). */
+function targetLineWidth(segments: Segment[]): number {
+  return segments.reduce(
+    (sum, seg) =>
+      sum +
+      Math.max(
+        estimateWidth(seg.text, 40),
+        seg.pinyin ? estimateWidth(seg.pinyin, 24) : 0,
+        seg.gloss ? estimateWidth(seg.gloss, 20) : 0,
+      ) +
+      6,
+    0,
+  );
+}
+
 /** Bilingual caption: native translation on top, target language below with pinyin under each word. */
 export const CaptionOverlay = ({nativeSegments, targetSegments}: Props) => (
   <View style={styles.container} pointerEvents="none">
     {nativeSegments.length > 0 ? (
+      <FitToWidth naturalWidth={nativeLineWidth(nativeSegments)}>
       <View style={styles.nativeLine}>
         {/* Each English word is its own column: the English (or underscores) on the top line,
             and the Chinese for a learnt word directly beneath it on the next line. */}
         {nativeColumns(nativeSegments).map((col, i) => (
           <View key={i} style={styles.nativeWord}>
-            <Text style={col.zh ? styles.nativeBlank : styles.native}>{col.top}</Text>
-            <Text style={styles.nativeZh}>{col.zh ?? '\u00A0'}</Text>
+            <Text numberOfLines={1} style={col.zh ? styles.nativeBlank : styles.native}>{col.top}</Text>
+            <Text numberOfLines={1} style={styles.nativeZh}>{col.zh ?? '\u00A0'}</Text>
           </View>
         ))}
       </View>
+      </FitToWidth>
     ) : null}
+    <FitToWidth naturalWidth={targetLineWidth(targetSegments)}>
     <View style={styles.target}>
       {targetSegments.map((seg, i) => {
         return (
           <View key={i} style={styles.word}>
-            <Text style={[styles.chars, seg.gloss ? styles.glossed : null]}>{seg.text}</Text>
-            {seg.pinyin ? <Text style={styles.pinyin}>{seg.pinyin}</Text> : null}
-            {seg.gloss ? <Text style={styles.gloss}>{seg.gloss}</Text> : null}
+            <Text numberOfLines={1} style={[styles.chars, seg.gloss ? styles.glossed : null]}>{seg.text}</Text>
+            {seg.pinyin ? <Text numberOfLines={1} style={styles.pinyin}>{seg.pinyin}</Text> : null}
+            {seg.gloss ? <Text numberOfLines={1} style={styles.gloss}>{seg.gloss}</Text> : null}
           </View>
         );
       })}
     </View>
+    </FitToWidth>
   </View>
 );
 
@@ -57,7 +97,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 64,
     right: 64,
-    bottom: 48,
+    bottom: 110,
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -67,7 +107,7 @@ const styles = StyleSheet.create({
   // English line, with learnt words as underscores.
   nativeLine: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'center',
     marginBottom: 4,
   },
@@ -77,23 +117,23 @@ const styles = StyleSheet.create({
   },
   native: {
     color: '#DDDDDD',
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 30,
+    lineHeight: 36,
   },
   nativeBlank: {
     color: '#DDDDDD',
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 30,
+    lineHeight: 36,
   },
   nativeZh: {
     color: '#FFFFFF',
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 22,
+    lineHeight: 27,
   },
   // Chinese line: each word is a column, with pinyin under it.
   target: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'center',
   },
   word: {
@@ -102,20 +142,20 @@ const styles = StyleSheet.create({
   },
   chars: {
     color: '#FFFFFF',
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 40,
+    lineHeight: 50,
   },
   glossed: {
     textDecorationLine: 'underline',
   },
   pinyin: {
     color: '#FFD966',
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 24,
+    lineHeight: 28,
   },
   gloss: {
     color: '#DDDDDD',
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 20,
+    lineHeight: 24,
   },
 });
