@@ -107,5 +107,5 @@ const styles = StyleSheet.create({
   kept: {color: '#FFD966'},
   lapsed: {color: '#FFB3B3'},
   row: {color: '#FFFFFF', fontSize: 22, marginTop: 2},
-  buttons: {flexDirection: 'row', gap: 24, marginTop: 16},
+  buttons: {flex: 1, gap: 10, marginTop: 16, justifyContent: 'center'},
 });
