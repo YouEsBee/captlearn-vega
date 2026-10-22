@@ -2,13 +2,14 @@
 A VegaOS TV app that teaches you another language while you watch.
 
 ## Description
-This app is a proof of concept, currently by streaming a local video.
+This app is a proof of concept that streams a small catalogue of videos.
 The user will first complete a quiz and thereafter watch a video with the English translations removed.
 
 ## Tech Stack
 - Gemini for video subtitle transcription and translation
 - React Native with Typescript for app development
-- Cloudflared to test local video
+- GitHub Pages to host the videos, captions and lexicons
+- Cloudflared to test a local backend
 
 ## Set up (once)
 - Clone this repository and open the project in VS Code.
@@ -22,7 +23,7 @@ npm i
 cd backend
 npm i
 ```
-- Install cloudflared. This sets up a tunnel so the emulator can stream videos from your computer.
+- Only to run your own backend (see below): install cloudflared. This sets up a tunnel so the emulator can stream videos from your computer.
     - Windows: `winget install --id Cloudflare.cloudflared`
     - Mac: `brew install cloudflared` (install Homebrew first)
 - Install `ffmpeg` if you will make captions (see below).
@@ -47,37 +48,32 @@ npm i
 - Skim each `lexicon.json` and fix any bad gloss by hand. `npm run lexicon -- <id>` in `backend` remakes one from its captions and prints it (this overwrites hand fixes).
 
 ## Run
-Each time you work on the app, you need two command lines open: one for the backend and one for the tunnel.
+The app loads the catalogue and each video's files from the team's shared copy on GitHub Pages, https://alisakujou0711.github.io/captlearn-media (the [captlearn-media](https://github.com/alisakujou0711/captlearn-media) repo). That address is written into the app when it is built (`SHARED_BACKEND_URL` in `backendUrl.js`), so nobody's computer needs to be running.
 
-### 1. Start the backend
-From the project root:
-```bash
-cd backend
-npm start
-```
-You should see `CaptLearn backend on :8080`. It only serves files (the catalogue, videos, thumbnails, captions and lexicons), so it needs no Gemini key. Leave this command line running.
+In Vega Studio, build the app with the wrench button, then press the play button to launch it in the emulator. If the app can't reach its files, it shows an error screen with a Try again button: check that the TV or emulator is online.
 
-- To use another port, set `PORT` first (e.g. `PORT=3000 npm start`, or `$env:PORT=3000; npm start` in PowerShell), and use that port in the tunnel command below.
-- To check it works, open http://localhost:8080/catalogue.json in a browser. It should show the catalogue.
+### Update the shared videos
+After adding a video or fixing captions or lexicons in `backend`, copy `backend/catalogue.json` and the changed `backend/media/<id>/` folders into the same places in a clone of captlearn-media, then commit and push it. GitHub Pages serves the new files within about ten minutes; the app picks them up without a rebuild. Each file must be under 100 MB.
 
-### 2. Start the tunnel
-In a new command line:
-```bash
-cloudflared tunnel --url http://localhost:8080
-```
-Copy the url it prints, e.g. `https://funky-but-interesting-name.trycloudflare.com`. Leave this command line running too. A quick tunnel's url changes every time you start it; a named Cloudflare tunnel keeps it the same.
+### Run your own backend instead (optional)
+To try files that aren't on GitHub Pages yet, run the backend on your computer and reach it through a tunnel. You need two command lines open.
 
-### 3. Point the app at the backend
-The backend address is written into the app when it is built. By default it is the team's shared tunnel url, `SHARED_BACKEND_URL` in `backendUrl.js`. Whoever runs the tunnel updates it there and commits it whenever the url changes; everyone else pulls and builds again.
-
-To use your own backend instead, copy `.env.example` to `.env` in the project root and set `BACKEND_URL` to your tunnel url:
-```
-BACKEND_URL=https://funky-but-interesting-name.trycloudflare.com
-```
-(Setting `BACKEND_URL` in the environment also works, and wins over `.env`; both win over the shared default.) Build the app again whenever the url changes.
-
-### 4. Launch the app
-In Vega Studio, build the app with the wrench button, then press the play button to launch it in the emulator. If the app can't reach the backend, it shows an error screen with a Try again button: check that both command lines are still running and that `BACKEND_URL` matches the current tunnel url.
+1. Start the backend. From the project root:
+   ```bash
+   cd backend
+   npm start
+   ```
+   You should see `CaptLearn backend on :8080`. It only serves files, so it needs no Gemini key. To use another port, set `PORT` first (e.g. `$env:PORT=3000; npm start` in PowerShell) and use it in the tunnel command. To check it works, open http://localhost:8080/catalogue.json in a browser.
+2. Start the tunnel in a new command line:
+   ```bash
+   cloudflared tunnel --url http://localhost:8080
+   ```
+   Copy the url it prints, e.g. `https://funky-but-interesting-name.trycloudflare.com`. A quick tunnel's url changes every time you start it.
+3. Copy `.env.example` to `.env` in the project root and set `BACKEND_URL` to the tunnel url:
+   ```
+   BACKEND_URL=https://funky-but-interesting-name.trycloudflare.com
+   ```
+   (Setting `BACKEND_URL` in the environment also works, and wins over `.env`; both win over the shared default.) Build the app again whenever the url changes, and delete `.env` to go back to GitHub Pages.
 
 ## Tests
 - App: `npm test` in the project root.

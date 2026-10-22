@@ -4,9 +4,9 @@
 const fs = require('fs');
 const path = require('path');
 
-// The team's current tunnel url, so a fresh clone builds without a .env. Update and commit it
-// whenever the tunnel restarts with a new url.
-const SHARED_BACKEND_URL = 'https://ampland-executives-bali-ccd.trycloudflare.com';
+// The team's shared copy of the backend's files on GitHub Pages (the captlearn-media repo), so a
+// fresh clone builds without a .env and works with nobody's computer running.
+const SHARED_BACKEND_URL = 'https://alisakujou0711.github.io/captlearn-media';
 
 /** BACKEND_URL from `env`, or else from the .env file's text, or else `shared`, with no trailing slash. Empty if none. */
 function backendUrl(env, dotenv, shared = '') {
