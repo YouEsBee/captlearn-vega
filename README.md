@@ -12,6 +12,7 @@ The user will first complete a quiz and thereafter watch a video with the Englis
 - Cloudflared to test a local backend
 
 ## Set up (once)
+- Install node.js through the website or command line.
 - Clone this repository and open the project in VS Code.
 - Install the Vega Studio plugin.
 - Install the app's node packages, in the project root:
@@ -23,7 +24,7 @@ npm i
 cd backend
 npm i
 ```
-- Only to run your own backend (see below): install cloudflared. This sets up a tunnel so the emulator can stream videos from your computer.
+- [Stream from local media] Only to run your own backend (see below): install cloudflared. This sets up a tunnel so the emulator can stream videos from your computer.
     - Windows: `winget install --id Cloudflare.cloudflared`
     - Mac: `brew install cloudflared` (install Homebrew first)
 - Install `ffmpeg` if you will make captions (see below).
@@ -78,3 +79,10 @@ To try files that aren't on GitHub Pages yet, run the backend on your computer a
 ## Tests
 - App: `npm test` in the project root.
 - Backend: `npm test` in `backend`.
+
+## Troubleshooting
+- Project is offline
+    - Check for internet connection
+    - Ensure `backend` is running
+    - Ensure app has finished building/rebuilding before launching in emulator
+    
