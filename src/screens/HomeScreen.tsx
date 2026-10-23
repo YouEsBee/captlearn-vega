@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {Avatar} from '../components/Avatar';
 import {FocusButton} from '../components/FocusButton';
@@ -38,6 +38,15 @@ export const HomeScreen = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [gearFocused, setGearFocused] = useState(false);
   const [avatarFocused, setAvatarFocused] = useState(false);
+  // Start at the top of the list. Focus on a lower card would scroll it into view, so the reset
+  // also runs again shortly after the screen appears.
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    const toTop = () => scrollRef.current?.scrollTo({y: 0, animated: false});
+    toTop();
+    const timer = setTimeout(toTop, 300);
+    return () => clearTimeout(timer);
+  }, []);
   // Focus starts on the next unwatched video, or the first video once all are watched.
   const focusId = (nextVideo(videos, watched) ?? videos[0])?.id;
 
@@ -94,7 +103,7 @@ export const HomeScreen = ({
         </View>
       )}
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.title}>CaptLearn</Text>
         <Text style={styles.nickname}>Learning as {nickname}. Pick a video.</Text>
         {catalogueRows(videos).map(row => (
